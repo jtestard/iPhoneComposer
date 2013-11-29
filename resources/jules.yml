@@ -1,0 +1,33 @@
+instrument: 45
+bpm : 110
+rhythm :
+  dividor : 8
+  list : [1,2,3,4]
+  order : 
+    type : markov
+    args : a{0}b{1}c{2}d{3}:{a=2|b=15|c=6|d=1}
+path: #List of pitches should be specified in Music21 format (tone,flat/normal,octave) with no commas, all caps. Example : C-4, D#3 
+  list: ['C3']
+  order : 
+    type : uniformRandom
+    args : None
+field:
+  list: [0,2,3,5,7,9,10,12]
+  order: 
+    type: markov
+    args : a{0}b{1}c{2}d{3}e{4}f{5}g{6}h{7}:{a=8|b=1|c=6|d=1|e=8|f=1|g=1|h=4}
+octave: 
+  list: [0,1,1]
+  order : 
+    type : cyclic
+    args : None
+amplitude:
+  list : [0.5]
+  order:
+    type: cyclic
+    args: None
+panning :
+  list : [0.5]
+  order:
+    type: cyclic
+    args: None
