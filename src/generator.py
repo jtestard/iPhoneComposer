@@ -46,40 +46,41 @@ class Generator(object):
         #mapping is required because the index of a path may vary in the list.
         self.alphabet = list(ascii_lowercase)
         self.sizes = {'rhythm':16,'field':8,'octave':4,'amplitude':4,'path':8,'panning':4}
-        self.fills = {'rhythm':0,'field':0,'octave':0,'amplitude':.5,'panning':.5}
+        self.fills = {'rhythm':1,'field':0,'octave':0,'amplitude':.5,'panning':.5}
         self.mkvpathsmap = {}
         self.mkvpathsmap['idx']=[]
         self.mkvpathsmap['weight']=[]
-#         self.mkvmap = {}
-#         for attributeName in ['rhythm']:
-#             self.mkvmap[attributeName] ={}
-#             self.mkvmap[attributeName]['idx']=[]
-#             self.mkvmap[attributeName]['weight']=[]
         self.state = self.readState()
-        self.__bindMarkovPath()
+        self.__bindMarkovAndPath()
     
     def readState(self):
         parameters = yaml.load(open(self.file))
+        #Special behavior for paths
+        parameters['path']['list'] = utils.make_set(parameters['path']['list'])
+        order = parameters['path']['order']
+        parameters['path']['order'] = order['type']
+        parameters['path']['order_args'] = order['args']
+        self.__computeOrderEng(parameters,"path")
+        
+        #Fills the blanks for all of the non markov stuff.
         for attributeName in ['rhythm','amplitude','panning','field','octave']:
             order = parameters[attributeName]['order']
             parameters[attributeName]['order'] = order['type']
             parameters[attributeName]['order_args'] = order['args']
-            self.__randomMarkov(parameters,attributeName)
+            #Fills the list if not of max size
             self.__fillList(parameters, attributeName, self.sizes[attributeName], self.fills[attributeName])
-        parameters['path']['list'] = utils.make_set(parameters['path']['list'])
-        self.__computeOrder(parameters,"rhythm")
-        self.__computeOrder(parameters,"field")
-        self.__computeOrder(parameters,"octave")
-        self.__computeOrder(parameters,"amplitude")
-        self.__computeOrder(parameters,"panning")
-        self.__computeOrder(parameters,"path")
+            #Assign random weights to the markov
+            self.__randomMarkov(parameters,attributeName)
+            #Assign the order engine
+            self.__computeOrderEng(parameters,attributeName)
+        
         return parameters
     
     def __fillList(self,parameters,attribute,size,fillVal):
         for i in range(len(parameters[attribute]['list']),size):
             parameters[attribute]['list'].append(fillVal)
     
-    def __computeOrder(self,parameters,attributeName):
+    def __computeOrderEng(self,parameters,attributeName):
         """
         This method computes the order parameter of some of the attributes of the state
         """
@@ -89,44 +90,33 @@ class Generator(object):
         else:
             size = len(parameters[attributeName]['list'])
             #If not already set, put a random value here.
-            parameters[attributeName]['order'] = order['type']
-            parameters[attributeName]['order_args'] = order['args']
-            if order['type']=='cyclic':
+            if parameters[attributeName]['order']=='cyclic':
                 parameters[attributeName]['order_eng'] = CyclicGenerator(size)
-            elif order['type']=='uniformRandom':
+            elif parameters[attributeName]['order']=='uniformRandom':
                 parameters[attributeName]['order_eng'] = UniformRandomGenerator(size)
-            elif order['type']=='markov':
-                parameters[attributeName]['order_eng'] = MarkovGenerator(order['args'])
+            elif parameters[attributeName]['order']=='markov':
+                parameters[attributeName]['order_eng'] = MarkovGenerator(parameters[attributeName]['order_args'])
             else:
-                raise Exception("Order type %s is invalid!", order['type'])
+                raise Exception("Order type %s is invalid!", parameters[attributeName]['order'])
         return
     
     def __randomMarkov(self,parameters,attributeName):
-        #if not attributeName=='path':
-        print "random markov"
-        max = self.sizes[attributeName]
-        size = len(parameters[attributeName]['list'])
-        print str(parameters[attributeName])
         if 'order_args' not in parameters[attributeName]:
-            print "random markov order args not in " + attributeName
-            parameters[attributeName]['order_args'] = self.__randomMarkovString(size)
+            parameters[attributeName]['order_args'] = self.__randomMarkovString(self.sizes[attributeName])
         elif parameters[attributeName]['order_args'] == 'None':
-            print "random markov order args for " + attributeName + " is None"
-            parameters[attributeName]['order_args'] = self.__randomMarkovString(size)
+            parameters[attributeName]['order_args'] = self.__randomMarkovString(self.sizes[attributeName])
         else:
             try:
-                print "random markov else"
                 #Should work since markov and list have the same size
                 ws = [w.split("=")[1] for w in parameters[attributeName]['order_args'].split(":")[1][1:-1].split("|")]
-                
-                for i in range(size,max):
-                    ws.append(0)
+                original_size = len(ws)
+                for i in range(original_size,self.sizes[attributeName]):
+                    ws.append(random.randint(1,20))
                 letters = ""
                 weights = ""
-                print attributeName + ":" + str(ws) + "size="+str(size) + ",max="+str(max)
-                for i in range(max):
+                for i in range(self.sizes[attributeName]):
                     letters += str(self.alphabet[i])+"{"+str(i)+"}"
-                    weights += str(self.alphabet[i])+"="+ws[i]+"|"
+                    weights += str(self.alphabet[i])+"="+str(ws[i])+"|"
                 weights = weights[:-1]
                 parameters[attributeName]['order_args'] = letters+":{"+weights+"}"
             except:
@@ -135,24 +125,8 @@ class Generator(object):
                 print t
                 print v
                 traceback.print_tb(tb)
-    
-#     def __bindPath(self,attributeName):
-#         if 'order_args' not in self.state[attributeName]:
-#             self.state[attributeName]['order_args'] = self.__randomMarkovString(len(self.state['path']['list']))
-#         elif self.state[attributeName]['order_args'] == 'None':
-#             self.state[attributeName]['order_args'] = self.__randomMarkovString(len(self.state['path']['list']))
-#         weights = self.state[attribute]['order_args'].split(":")[1][1:-1].split("|")
-#         try:
-#             for idx,p in enumerate(self.state['path']['list']):
-#                 self.mkvpathsmap['idx'].append(idx)
-#                 self.mkvpathsmap['weight'].append(weights[idx].split("=")[1])
-#         except:
-#             t,v,tb = sys.exc_info()
-#             print t
-#             print v
-#             traceback.print_tb(tb)
 
-    def __bindMarkovPath(self):
+    def __bindMarkovAndPath(self):
         #This method binds the path's markov weights with its list. This is required because the number of elements in the path is dynamic.
         if 'order_args' not in self.state['path']:
             self.state['path']['order_args'] = self.__randomMarkovString(len(self.state['path']['list']))
@@ -169,7 +143,7 @@ class Generator(object):
             print v
             traceback.print_tb(tb)
             
-    def __updatePathMarkov(self):
+    def __updateMarkovForPath(self):
         letters = ""
         weights = ""
         for i in range(len(self.mkvpathsmap['idx'])):
@@ -196,7 +170,7 @@ class Generator(object):
                     del self.state['path']['list'][idx]
                     del self.mkvpathsmap['idx'][idx]
                     del self.mkvpathsmap['weight'][idx]
-                    self.__updatePathMarkov()
+                    self.__updateMarkovForPath()
                 else: 
                     #Otherwise it has to be addded. If there are more than 8 notes, the first note in the list has to be removed as well.
                     if len(self.state['path']['list'])>=8:
@@ -215,11 +189,11 @@ class Generator(object):
                         self.state['path']['list'].append(value)
                         self.mkvpathsmap['idx'].append(len(self.mkvpathsmap['idx']))
                         self.mkvpathsmap['weight'].append(10) #TODO: Warning need to change when covering markov
-                    self.__updatePathMarkov()
+                    self.__updateMarkovForPath()
             elif attribute=="rhythm order":
                 self.__updateOrder('rhythm',value)
             elif attribute.startswith("rhythm list"):
-                self.state['rhythm']['list'][int(attribute.split(" ")[-1])] = value
+                self.state['rhythm']['list'][int(attribute.split(" ")[-1])-1] = value
             else:
                 #Do nothing
                 print "Nothing happens"

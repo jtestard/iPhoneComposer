@@ -49,7 +49,7 @@ class TouchOSC(object):
                 oscaddr = "/"+str(touchosctab)+"/"+touchoscop
                 self.server.addMsgHandler(oscaddr,self.printing_handler)
         
-        #Set the quitting handler
+        #Set additional handlers
         self.server.addMsgHandler('/quit',self.printing_handler)
         self.server.addMsgHandler('/connect',self.connect_handler)
         self.server.addMsgHandler('/basic/reset',self.reset_handler)
@@ -84,6 +84,7 @@ class TouchOSC(object):
     
     def connect_handler(self,addr, tags, data, source):
         try:
+            print "connecting"
             self.ip = data[0]
             self.port = data[1]
             self.__gui.addToOSC("Phone ip address : " + self.ip + ", phone port : " + str(self.port) + "\n")
@@ -99,6 +100,7 @@ class TouchOSC(object):
     def send_state(self):
         addresses = [] #Actual values
         prereqs = [] #Reset values
+        print "sending state"
         for attribute in self.__generator.state:
             content = self.__generator.state[attribute]
             if attribute=='instrument':
@@ -160,6 +162,17 @@ class TouchOSC(object):
         
         pass
     
+    #Rounding value for rhythm dividor
+    def __dividorValue(self,r):
+        if r < .25:
+            return 2
+        elif r < .5:
+            return 4
+        elif r < .75:
+            return 6
+        else:
+            return 8 
+    
     #Rounding value for rhythm
     def __rhythmValue(self,r):
         if r < .8:
@@ -207,6 +220,8 @@ class TouchOSC(object):
                             self.update_rhythm('order', val)
                         elif addr.startswith('/rhythm/list'):
                             self.update_rhythm(addr.split("/")[-1], val)
+                        elif addr.startswith('/rhythm/dividor'):
+                            self.update_rhythm('dividor', val)
                         else:
                             pass
                     self.__gui.addToOSC(msg)
@@ -230,9 +245,11 @@ class TouchOSC(object):
     
     def update_rhythm(self,type,val):
         if type=='order':
-            val = self.__order(float(val[1:][:-1]))
-            self.__gui.update('path order',self.__orderDict[val])
-        else:
+            self.__gui.update('rhythm order',self.__orderDict[self.__order(float(val[1:][:-1]))])
+        elif type=='dividor':
+            self.__gui.update('rhythm dividor',self.__dividorValue(float(val[1:][:-1])))
+        else: #Needs to stay as else (type will be the index of the rhythm to update)
+            print "rhythm type :" + str(type) 
             self.__gui.update('rhythm list '+type,self.__rhythmValue(float(val[1:][:-1])))
     
     def update_path(self,type,val):
@@ -254,6 +271,7 @@ class TouchOSC(object):
             if data[0]==1.0: #if reset is toggled 
                 self.__generator.loadState()
                 self.send_state()
+                print "state sent"
         except:
             print sys.exc_info()
     
@@ -264,67 +282,3 @@ class TouchOSC(object):
             self.__messageQueue.put(msg)
         except:
             print sys.exc_info()
-
-#                     elif addr.startswith('/pitch/field'):
-#                         if addr.endswith("order"):
-#                             type = "order"
-#                             attr = "field"
-#                             self.update_non_basic(attr, type, val)
-#                         else:
-#                             type = addr[-1]
-#                             attr = "field"
-#                             self.update_non_basic(attr, type, val)
-#                     elif addr.startswith('/pitch/octave'):
-#                         if addr.endswith("order"):
-#                             type = "order"
-#                             attr = "octave"
-#                             self.update_non_basic(attr, type, val)
-#                         else:
-#                             type = attr[-1]
-#                             attr = "octave"
-#                             self.update_non_basic(attr, type, val)
-#                     elif addr.startswith('/volume/amplitude'):
-#                         if addr.endswith("order"):
-#                             type = "order"
-#                             attr = "amplitude"
-#                             self.update_non_basic(attr, type, val)
-#                         else:
-#                             type = attr[-1]
-#                             attr = "amplitude"
-#                             self.update_non_basic(attr, type, val)
-#                     elif addr.startswith('/volume/panning'):
-#                         if addr.endswith("order"):
-#                             type = "order"
-#                             attr = "panning"
-#                             self.update_non_basic(attr, type, val)
-#                         else:
-#                             type = attr[-1]
-#                             attr = "panning"
-#                             self.update_non_basic(attr, type, val)
-
-#     def update_non_basic(self,attr,type,val):
-#         if type=='order':
-#             val = self.__order(float(val[1:][:-1]))
-#             self.__generator.update(attr+' order',val)
-#             self.__gui.update(attr+' order',self.__orderDict[val])
-#         elif type in self.__alphabetDict.values():
-#             #is a letter field
-#             val = int(round(float(val[1:][:-1])))
-#             idx = self.__reverseAlphabetDict[attr[-1]]-1
-#             list = self.__generator.state[attr]['list']
-#             if len(list) < idx:
-#                 tmp = [0] * 8
-#                 for i in range(8):
-#                     if i < len(list):
-#                         tmp[i] = list[i]
-#                     else:
-#                         tmp[i] = 0
-#                 list = tmp
-#             list[idx] = val
-#             self.__generator.update(attr+' list',list)
-#             self.__gui.update(attr+' list',list)
-# #         elif type.startswith('list'):
-# #             pass
-#         else:
-#             #Don't know what you are talking about :)
-#             pass

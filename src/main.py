@@ -2,6 +2,7 @@ import gui
 import generator
 import midioutput
 import touchosc
+import os
 from tkFileDialog   import askopenfilename
 from threading import Thread
 
@@ -25,8 +26,9 @@ if __name__ == '__main__':
     
     #Get source file for improv
     #filename = askopenfilename()
-    filename = "../resources/jules.yml"
-    oscfilename = "../resources/oscmap.yml"
+    currentdir = os.path.dirname(os.path.realpath(__file__))
+    filename = currentdir+"/../resources/jules.yml"
+    oscfilename = currentdir+"/../resources/oscmap.yml"
     
     #Building modules
     gen = generator.Generator(filename)

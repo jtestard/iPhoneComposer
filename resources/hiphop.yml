@@ -2,19 +2,19 @@ instrument: 45
 bpm : 110
 rhythm :
   dividor : 4
-  list : [3,3,2,3,3,2,3,3,2,3,3,2,3,2,1,1] #[,3,3,2,3,3,2,1,1,1,1]
+  list : [3,3,2,3,3,2,3,3,2,3,3,2,3,2,1,1]
   order : 
     type : cyclic
     args : a{0}b{1}c{2}d{3}:{a=2|b=15|c=6|d=1}
-path: #List of pitches should be specified in Music21 format (tone,flat/normal,octave) with no commas, all caps. Example : C-4, D#3 
+path: 
   list: ['C3']
   order : 
     type : uniformRandom
     args : None
 field:
-  list: [0,0,0,2,3,-2,0] #[0,2,3,5,-5,-3,-2,12]
+  list: [0,0,0,2,3,-2,0] 
   order: 
-    type: cyclic #markov
+    type: cyclic
     args : a{0}b{1}c{2}d{3}e{4}f{5}g{6}h{7}:{a=8|b=1|c=6|d=1|e=8|f=1|g=1|h=4}
 octave: 
   list: [0,0,-1]

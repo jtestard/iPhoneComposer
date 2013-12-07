@@ -1,8 +1,10 @@
+#Note : if markov arguments are not specified here, they will be randomly chosen.
 instrument: 45
 bpm : 120
-rhythm : #Range for elements in the list : from 0 to 4. Have to be powers of 2
+rhythm : #Range for elements in the list : from 1 to 4.
   dividor : 4
   list : [1,1,2]
+  on: [1,1,1] #Should be 1 if the note will be chosen from the path, 0 if it is a silence.
   order : 
     type : markov
     args : a{0}b{1}c{2}:{a=8|b=1|c=2|}a:{b=2|c=1}b:{c=9|a=1}c:{a=1|b=11}

@@ -171,11 +171,11 @@ class GUI(object):
                 self.vars['path']['list'].set(str(self.__generator.state['path']['list']))
                 self.vars['path']['order_args'].set(str(self.__generator.state['path']['order_args']))
         elif attribute=='rhythm order':
-            if not value== self.vars['rhythm']['order'].get():
+            if not value==self.vars['rhythm']['order'].get():
                 if self.__generator.update(attribute,value):
                     self.vars['rhythm']['order'].set(value)
         elif attribute.startswith('rhythm list'):
-            idx = int(attribute.split(" ")[-1])
+            idx = int(attribute.split(" ")[-1])-1
             if not value==self.__generator.state['rhythm']['list'][idx]:
                 if self.__generator.update(attribute,value):
                     self.vars['rhythm']['list'].set(str(self.__generator.state['rhythm']['list']))
@@ -207,7 +207,7 @@ class GUI(object):
         Tkinter.Entry(pane,textvariable=self.vars[type]['order'],state=Tkinter.DISABLED,width=50).grid(row=t_row,column=1)
         Tkinter.Label(pane,text=str(type+" order args")).grid(row=t_row+1,column=0)
         self.vars[type]['order_args'] = Tkinter.StringVar()
-        self.vars[type]['order_args'].set(self.__generator.state[type]['order_args'])
+        self.vars[type]['order_args'].set(self.__generator.state[type]['order_args'].split(":")[1])
         Tkinter.Entry(pane,textvariable=self.vars[type]['order_args'],state=Tkinter.DISABLED,width=50).grid(row=t_row+1,column=1)
     
     def __createApplicationState(self,paned):
@@ -220,35 +220,37 @@ class GUI(object):
         paned.add(internal)
         
         #Instrument
-        instrumentLabel = Tkinter.Label(internal,text="Instrument").grid(row=0,column=0)
+        Tkinter.Label(internal,text="Instrument").grid(row=0,column=0)
         self.vars['instrument'] = Tkinter.StringVar()
         self.vars['instrument'].set(self.__generator.state['instrument'])
-        instrumentField = Tkinter.Entry(internal,textvariable=self.vars['instrument'],state=Tkinter.DISABLED,width=50).grid(row=0,column=1)
+        Tkinter.Entry(internal,textvariable=self.vars['instrument'],state=Tkinter.DISABLED,width=50).grid(row=0,column=1)
         
         #bpm
-        bpmLabel = Tkinter.Label(internal,text="bpm").grid(row=1,column=0)
+        Tkinter.Label(internal,text="bpm").grid(row=1,column=0)
         self.vars['bpm'] = Tkinter.StringVar()
         self.vars['bpm'].set(str(self.__generator.state['bpm']))
-        bpmField = Tkinter.Entry(internal,textvariable=self.vars['bpm'],state=Tkinter.DISABLED,width=50).grid(row=1,column=1)
+        Tkinter.Entry(internal,textvariable=self.vars['bpm'],state=Tkinter.DISABLED,width=50).grid(row=1,column=1)
         Tkinter.Frame(height=5, bd=1, relief=Tkinter.SUNKEN).grid(row=2,column=0)
         
         #path
         self.vars['path'] = {}
-        pathLabel = Tkinter.Label(internal,text="path list").grid(row=3,column=0)
+        Tkinter.Label(internal,text="path list").grid(row=3,column=0)
         self.vars['path']['list'] = Tkinter.StringVar()
         self.vars['path']['list'].set(str(self.__generator.state['path']['list']))
-        pathField = Tkinter.Entry(internal,textvariable=self.vars['path']['list'],state=Tkinter.DISABLED,width=50).grid(row=3,column=1)
+        Tkinter.Entry(internal,textvariable=self.vars['path']['list'],state=Tkinter.DISABLED,width=50).grid(row=3,column=1)
         self.__order(internal,"path",4)
         Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=6,column=0)
         
         #rhythm
         self.vars['rhythm'] = {}
-        rhythmLabel = Tkinter.Label(internal,text="rhythm list").grid(row=6,column=0)
+        Tkinter.Label(internal,text="rhythm list").grid(row=6,column=0)
         self.vars['rhythm']['list'] = Tkinter.StringVar()
         self.vars['rhythm']['list'].set(str(self.__generator.state['rhythm']['list']))
-        rhythmField = Tkinter.Entry(internal,textvariable=self.vars['rhythm']['list'],state=Tkinter.DISABLED,width=50).grid(row=6,column=1)
+        Tkinter.Entry(internal,textvariable=self.vars['rhythm']['list'],state=Tkinter.DISABLED,width=50).grid(row=6,column=1)
         self.__order(internal,"rhythm",7)
-        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=9,column=0)
+        Tkinter.Label(internal,text="rhythm dividor").grid(row=6,column=0)
+        self.vars['rhythm']['dividor'] = Tkinter.StringVar()
+        Tkinter.Entry(internal,textvariable=self.vars['rhythm']['dividor'],state=Tkinter.DISABLED,width=50).grid(row=9,column=1)
         
         #field
         self.vars['field']={}
