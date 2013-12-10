@@ -10,8 +10,9 @@ The software has only been testing on Mac OS X, but should work on other UNIX-li
  - athenaCL python module
  - music21 module
  - pyosc
- - python modules can installed using 
-        easy_install <modulename>
+ - python modules can be installed using 
+        easy_install module name
+ - touchOSC Editor and Midi Bridge both available at http://hexler.net/software/touchosc
     
 Python can be installed 
 ## Installation ##
