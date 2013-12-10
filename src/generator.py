@@ -194,10 +194,19 @@ class Generator(object):
                 self.__updateOrder('rhythm',value)
             elif attribute.startswith("rhythm list"):
                 self.state['rhythm']['list'][int(attribute.split(" ")[-1])-1] = value
+            elif attribute.startswith("rhythm dividor"):
+                self.state['rhythm']['dividor'] = value
+            elif attribute.startswith("field list"):
+                self.state['field']['list'][int(attribute.split(" ")[-1])-1] = value
+            elif attribute.startswith("field order"):
+                self.__updateOrder('field',value)
+            elif attribute.startswith("octave list"):
+                self.state['octave']['list'][int(attribute.split(" ")[-1])-1] = value
+            elif attribute.startswith("octave order"):
+                self.__updateOrder('octave',value)
             else:
-                #Do nothing
-                print "Nothing happens"
-                return False
+                #Should not happen
+                raise Exception("generator.update() called with invalid attribute {}".format(attribute))
             return True
         except:
             t,v,tb = sys.exc_info()
@@ -218,7 +227,7 @@ class Generator(object):
             elif value=="uniformRandom":
                 self.state[attribute]['order_eng'] = UniformRandomGenerator(size)
             else: 
-                self.state['path']['order_eng'] = MarkovGenerator(self.state['path']['order_args'])
+                self.state[attribute]['order_eng'] = MarkovGenerator(self.state[attribute]['order_args'])
     
     def __randomMarkovString(self,size):
         letters = ""

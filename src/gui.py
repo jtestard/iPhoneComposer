@@ -179,6 +179,26 @@ class GUI(object):
             if not value==self.__generator.state['rhythm']['list'][idx]:
                 if self.__generator.update(attribute,value):
                     self.vars['rhythm']['list'].set(str(self.__generator.state['rhythm']['list']))
+        elif attribute.startswith('rhythm dividor'):
+            if not value==self.vars['rhythm']['dividor'].get():
+                if self.__generator.update(attribute,value):
+                    self.vars['rhythm']['dividor'].set(value)
+        elif attribute.startswith('field list'):
+            if not value==self.__generator.state['field']['list'][int(attribute.split(" ")[-1])-1]:
+                if self.__generator.update(attribute,value):
+                    self.vars['field']['list'].set(self.__generator.state['field']['list'])
+        elif attribute=='field order':
+            if not value==self.vars['field']['order'].get():
+                if self.__generator.update(attribute,value):
+                    self.vars['field']['order'].set(value)
+        elif attribute.startswith('octave list'):
+            if not value==self.__generator.state['octave']['list'][int(attribute.split(" ")[-1])-1]:
+                if self.__generator.update(attribute,value):
+                    self.vars['octave']['list'].set(self.__generator.state['octave']['list'])
+        elif attribute=='octave order':
+            if not value==self.vars['octave']['order'].get():
+                if self.__generator.update(attribute,value):
+                    self.vars['octave']['order'].set(value)
         else:
             #not recognized
             pass
@@ -248,34 +268,35 @@ class GUI(object):
         self.vars['rhythm']['list'].set(str(self.__generator.state['rhythm']['list']))
         Tkinter.Entry(internal,textvariable=self.vars['rhythm']['list'],state=Tkinter.DISABLED,width=50).grid(row=6,column=1)
         self.__order(internal,"rhythm",7)
-        Tkinter.Label(internal,text="rhythm dividor").grid(row=6,column=0)
+        Tkinter.Label(internal,text="rhythm dividor").grid(row=9,column=0)
         self.vars['rhythm']['dividor'] = Tkinter.StringVar()
+        self.vars['rhythm']['dividor'].set(str(self.__generator.state['rhythm']['dividor']))
         Tkinter.Entry(internal,textvariable=self.vars['rhythm']['dividor'],state=Tkinter.DISABLED,width=50).grid(row=9,column=1)
         
         #field
         self.vars['field']={}
-        fieldLabel = Tkinter.Label(internal,text="field list").grid(row=10,column=0)
+        Tkinter.Label(internal,text="field list").grid(row=10,column=0)
         self.vars['field']['list'] = Tkinter.StringVar()
         self.vars['field']['list'].set(str(self.__generator.state['field']['list']))
-        fieldField = Tkinter.Entry(internal,textvariable=self.vars['field']['list'],state=Tkinter.DISABLED,width=50).grid(row=10,column=1)
+        Tkinter.Entry(internal,textvariable=self.vars['field']['list'],state=Tkinter.DISABLED,width=50).grid(row=10,column=1)
         self.__order(internal,"field",11)
         Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=13,column=0)
         
         #octave
         self.vars['octave'] = {}
-        octaveLabel = Tkinter.Label(internal,text="octave list").grid(row=14,column=0)
+        Tkinter.Label(internal,text="octave list").grid(row=14,column=0)
         self.vars['octave']['list'] = Tkinter.StringVar()
         self.vars['octave']['list'].set(str(self.__generator.state['octave']['list']))
-        octaveoctave = Tkinter.Entry(internal,textvariable=self.vars['octave']['list'],state=Tkinter.DISABLED,width=50).grid(row=14,column=1)
+        Tkinter.Entry(internal,textvariable=self.vars['octave']['list'],state=Tkinter.DISABLED,width=50).grid(row=14,column=1)
         self.__order(internal,"octave",15)
         Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=17,column=0)
         
         #amplitude
         self.vars['amplitude'] = {}
-        amplitudeLabel = Tkinter.Label(internal,text="amplitude list").grid(row=18,column=0)
+        Tkinter.Label(internal,text="amplitude list").grid(row=18,column=0)
         self.vars['amplitude']['list'] = Tkinter.StringVar()
         self.vars['amplitude']['list'].set(str(self.__generator.state['amplitude']['list']))
-        amplitudeamplitude = Tkinter.Entry(internal,textvariable=self.vars['amplitude']['list'],state=Tkinter.DISABLED,width=50).grid(row=18,column=1)
+        Tkinter.Entry(internal,textvariable=self.vars['amplitude']['list'],state=Tkinter.DISABLED,width=50).grid(row=18,column=1)
         self.__order(internal,"amplitude",19)
         Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=21,column=0)
         

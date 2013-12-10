@@ -59,13 +59,13 @@ class TouchOSC(object):
         self.__orderDict = {0:"cyclic",1:"markov",2:"uniformRandom"}
         self.__pathDict = {
                            "C2":"/4/1","C#2":"/4/2","D2":"/4/3","D#2":"/4/4","E2":"/4/5","F2":"/4/6",
-                           "F#2":"/4/7","G2":"/4/8","G#2":"/4/9","A3":"/4/10","A#3":"/4/11","B3":"/4/12",
+                           "F#2":"/4/7","G2":"/4/8","G#2":"/4/9","A2":"/4/10","A#2":"/4/11","B2":"/4/12",
                            "C3":"/3/1","C#3":"/3/2","D3":"/3/3","D#3":"/3/4","E3":"/3/5","F3":"/3/6",
-                           "F#3":"/3/7","G3":"/3/8","G#3":"/3/9","A4":"/3/10","A#4":"/3/11","B4":"/3/12",
+                           "F#3":"/3/7","G3":"/3/8","G#3":"/3/9","A3":"/3/10","A#3":"/3/11","B3":"/3/12",
                            "C4":"/2/1","C#4":"/2/2","D4":"/2/3","D#4":"/2/4","E4":"/2/5","F4":"/2/6",
-                           "F#4":"/2/7","G4":"/2/8","G#4":"/2/9","A5":"/2/10","A#5":"/2/11","B5":"/2/12",
+                           "F#4":"/2/7","G4":"/2/8","G#4":"/2/9","A4":"/2/10","A#4":"/2/11","B4":"/2/12",
                            "C5":"/1/1","C#5":"/1/2","D5":"/1/3","D#5":"/1/4","E5":"/1/5","F5":"/1/6",
-                           "F#5":"/1/7","G5":"/1/8","G#5":"/1/9","A6":"/1/10","A#6":"/1/11","B6":"/1/12"
+                           "F#5":"/1/7","G5":"/1/8","G#5":"/1/9","A5":"/1/10","A#5":"/1/11","B5":"/1/12"
                            }
         self.__reversePathDict = inv_map = {v:k for k, v in self.__pathDict.items()}
         self.__alphabetDict = {
@@ -222,6 +222,17 @@ class TouchOSC(object):
                             self.update_rhythm(addr.split("/")[-1], val)
                         elif addr.startswith('/rhythm/dividor'):
                             self.update_rhythm('dividor', val)
+                        elif addr.startswith('/pitch/field'):
+                            print "val"
+                            if addr[-5:]=='order': #if the last 5 letters of the address are "order"
+                                self.__gui.update('field order',self.__orderDict[self.__order(float(val[1:][:-1]))])
+                            else:
+                                self.__gui.update('field list '+str(self.__reverseAlphabetDict[addr[-1]]),int(round(float(val[1:][:-1]))))
+                        elif addr.startswith('/pitch/octave'):
+                            if addr[-5:]=='order':#if the last 5 letters of the address are "order"
+                                self.__gui.update('octave order',self.__orderDict[self.__order(float(val[1:][:-1]))])
+                            else:
+                                self.__gui.update('octave list '+str(self.__reverseAlphabetDict[addr[-1]]),int(round(float(val[1:][:-1]))))
                         else:
                             pass
                     self.__gui.addToOSC(msg)
@@ -249,7 +260,6 @@ class TouchOSC(object):
         elif type=='dividor':
             self.__gui.update('rhythm dividor',self.__dividorValue(float(val[1:][:-1])))
         else: #Needs to stay as else (type will be the index of the rhythm to update)
-            print "rhythm type :" + str(type) 
             self.__gui.update('rhythm list '+type,self.__rhythmValue(float(val[1:][:-1])))
     
     def update_path(self,type,val):
