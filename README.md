@@ -11,7 +11,7 @@ The software has only been testing on Mac OS X, but should work on other UNIX-li
  - music21 module
  - pyosc
  - python modules can be installed using 
-        easy_install module name
+        	```easy_install module name```
  - touchOSC Editor and Midi Bridge both available at http://hexler.net/software/touchosc
  - iOS or Android device with the TouchOSC application installed.
 
@@ -29,7 +29,7 @@ Before you can use the iPhone composer, you have to upload the iPhoneComposer.to
  + Finally, you can go back to the iPhoneComposer user interface by taping Done on your device from the TouchOSC Menu.
 
 Now you can start the application by issuing the following command from the project's main directory:
-    python src/main.py
+    ```python src/main.py```
  
 Once the application is started, the final set up step is to make sure that iPhone Composer is aware of your device (by this time your device should already be aware of your computer, you can make sure of this by tapping any element of the device UI, an output should appear under the OSC window on the iPhone Composer desktop application).
  + Back on the TouchOSC Menu, go under OSC and look at the Local IP Address field. 
