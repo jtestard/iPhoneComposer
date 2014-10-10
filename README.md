@@ -50,9 +50,9 @@ Make sure your computer and mobile device are both on the same WiFi network. It 
 
 Before you can use the iPhone composer, you have to upload the iPhoneComposer.touchosc layout file unto your computer and connect the device to your computer. In order to do so, follow these steps carefully : 
 
- + Open the layout file with the TouchOSC editor.
+ + Open the TouchOSC editor.
+ + Open the layout file with the TouchOSC editor. There are currently two layouts, one for iPhone4 and one for iPhone5. If you have another phone (android), please contact me and I'll release a layout for your phone.
  + Open the Touch OSC Bridge application on your computer.
- + Open
  + Once the layout file is open on the TouchOSC application, click on the "Sync" button
  + Back on the device, open the touch OSC application. You should be seing 3 sections : Connections, Layout and Option. This is the Touch OSC Menu.
  + Select MIDI Bridge under Connections. You should be seing your machine under Found Host() if you opened the Touch OSC Bridge app correctly. Select it and copy the IP address under Host.

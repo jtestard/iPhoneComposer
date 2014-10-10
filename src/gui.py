@@ -3,6 +3,7 @@ import sys
 import traceback
 import OSC
 import socket
+import subprocess
 
 class GUI(object):
     
@@ -77,8 +78,8 @@ class GUI(object):
             self.__orderValue = {'cyclic':0,'markov':1,'uniformRandom':2}
             self.__invertOrderValue = {0:'cyclic',1:'markov',2:'uniformRandom'}
 
-            #self.__root.lift()
-            self.__root.call('wm', 'attributes', '.', '-topmost', True)
+            command = '''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' '''
+            subprocess.call(command,shell=True)
             
         except :
             t,v,tb = sys.exc_info()
@@ -86,6 +87,10 @@ class GUI(object):
             self.__root.quit()
             quit()
     
+    def raise_above_all(self,window):
+        window.attributes('-topmost', 1)
+        window.attributes('-topmost', 0)
+
     def addToOutput(self,msg):
         self.output.insert(Tkinter.END,msg)
         self.output.yview(Tkinter.END)
@@ -313,6 +318,6 @@ class GUI(object):
         Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=25,column=0)
     
     def run(self):
-        self.__root.after_idle(self.__root.call, 'wm', 'attributes', '.',
-                             '-topmost', False)
+        #self.__root.after_idle(self.__root.call, 'wm', 'attributes', '.',
+        #                     '-topmost', False)
         self.__root.mainloop()
