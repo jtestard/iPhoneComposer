@@ -6,8 +6,9 @@ import utils
 import sys
 import traceback
 from Queue import Queue
-from music21 import note
 from string import ascii_lowercase
+
+from music21 import note
 from athenaCL.libATH import grammar
 from athenaCL.libATH import markov
 
@@ -272,7 +273,7 @@ class Generator(object):
         #Store in note buffer
         n = Note(pitch,duration,velocity)
         self.queue.put(n)
-        self.size += 1
+        self.size += 1 # Should be using queue size instead.
         return
     
     def __change_instrument(self,instrument):

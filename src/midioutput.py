@@ -1,6 +1,5 @@
 import time
-#import rtmidi
-import rtmidi_python as rtmidi
+import rtmidi
 import generator
 from Queue import Empty
 import Tkinter

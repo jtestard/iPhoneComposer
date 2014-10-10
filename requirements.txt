@@ -1,0 +1,5 @@
+python-rtmidi==0.5b1
+python-osc==1.2
+athenaCL==2.0.0a15
+music21==1.7.1
+PyYAML==3.10

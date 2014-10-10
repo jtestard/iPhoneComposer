@@ -9,7 +9,7 @@ rhythm :
 path: #List of pitches should be specified in Music21 format (tone,flat/normal,octave) with no commas, all caps. Example : C-4, D#3 
   list: ['C3']
   order : 
-    type : uniformRandom
+    type : cyclic 
     args : None
 field:
   list: [0,0,0,2,3,-2,0] #[0,2,3,5,-5,-3,-2,12]

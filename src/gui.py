@@ -76,6 +76,9 @@ class GUI(object):
             #Dictionaries
             self.__orderValue = {'cyclic':0,'markov':1,'uniformRandom':2}
             self.__invertOrderValue = {0:'cyclic',1:'markov',2:'uniformRandom'}
+
+            #self.__root.lift()
+            self.__root.call('wm', 'attributes', '.', '-topmost', True)
             
         except :
             t,v,tb = sys.exc_info()
@@ -310,4 +313,6 @@ class GUI(object):
         Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=25,column=0)
     
     def run(self):
+        self.__root.after_idle(self.__root.call, 'wm', 'attributes', '.',
+                             '-topmost', False)
         self.__root.mainloop()

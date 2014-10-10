@@ -9,7 +9,7 @@ rhythm :
 path: 
   list: ['C3']
   order : 
-    type : uniformRandom
+    type : cyclic 
     args : None
 field:
   list: [0,0,0,2,3,-2,0] 

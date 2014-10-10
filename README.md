@@ -7,10 +7,10 @@ iPhone Composer Application for UCSD MUS276C Course and using in UCSD MUS267.
 The software has only been tested on Mac OS X. Support on Windows or Linux is not guaranteed.  The following software are assumed to be already installed properly:
 
  - Python 2.7 or more with setup tools. A good way to install those is to follow the [Python Mac OS X setup guide](http://docs.python-guide.org/en/latest/starting/install/osx/).
- - Latest (or as late as possible) version of [Xcode](https://developer.apple.com/xcode/).
+ - Latest (or as late as possible) version of [Xcode](https://developer.apple.com/xcode/). Xcode is required because its installation contains all the required audio librairies.
  - touchOSC Editor and Midi Bridge both available [here](http://hexler.net/software/touchosc) (go to the bottom of the page to find them).
  - iOS or Android device with the TouchOSC application installed (you can install touchOSC from the app store, it costs 5$, but can have lots of uses outside the context of this application).
- - [SimpleSynth](http://www.macupdate.com/app/mac/7177/simplesynth) (or any other MIDI synthesizer).
+ - [SimpleSynth](http://www.macupdate.com/app/mac/7177/simplesynth)(free) (or any other MIDI synthesizer, such as [NLog PolySynth](http://www.temporubato.com/index.php?page=ProdMAC)(12$)).
 
 The following python modules will be installed by the application (if they don't already exist):
 
@@ -87,6 +87,8 @@ Once the application is started, the final set up step is to make sure that iPho
 
 ### Step 7 : Start and connect the MIDI synthesizer
  *This step is technically optional, but required for sound output.*
+ Make sure your MIDI synthesizer uses the `iPhone Composer MIDI output` Midi channel.
+
 ### Notes
  
   - The last two tabs (Volume and Markov) are not yet supported. You can still edit markov weights through YAML files.

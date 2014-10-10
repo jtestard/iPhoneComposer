@@ -3,6 +3,7 @@ import generator
 import midioutput
 import touchosc
 import os
+import argparse
 
 from tkFileDialog   import askopenfilename
 from threading import Thread
@@ -23,10 +24,20 @@ def osc_task(osc):
     pass
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
     print "### iPhone Composer Python Music Generator ###"
-    
     currentdir = os.path.dirname(os.path.realpath(__file__))
-    filename = currentdir+"/../resources/jules.yml"
+    
+    parser.add_argument(
+        "-f","--file",
+        required=False,
+        default=currentdir+"/../resources/jules.yml",
+        action="store",
+        dest="filename",
+        help = "file name"
+    )
+    options = parser.parse_args()
+    filename = options.filename 
     oscfilename = currentdir+"/../resources/oscmap.yml"
     
     #Building modules
