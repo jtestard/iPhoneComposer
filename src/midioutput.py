@@ -1,5 +1,6 @@
 import time
-import rtmidi
+#import rtmidi
+import rtmidi_python as rtmidi
 import generator
 from Queue import Empty
 import Tkinter
@@ -18,12 +19,14 @@ class MidiOut(object):
         self.tracks = {}
         
         self.__midiOut = rtmidi.MidiOut()
-        if self.__midiOut.get_ports():
-            self.__midiOut.open_port(0)
-            msg = "MIDI output chosen : {}\n".format(self.__midiOut.get_ports()[0])
-        else:
-            self.__midiOut.open_virtual_port("My virtual output")
-            msg = "MIDI output chosen : my virtual output\n"
+        #if self.__midiOut.get_ports():
+        #    self.__midiOut.open_port(0)
+        #    msg = "MIDI output chosen : {}\n".format(self.__midiOut.get_ports()[0])
+        #else:
+        #    self.__midiOut.open_virtual_port("My virtual output")
+        #    msg = "MIDI output chosen : my virtual output\n"
+        self.__midiOut.open_virtual_port("iPhone Composer Midi Output")
+        msg = "MIDI output chosen : iPhone Composer Midi Output\n"
         self.__gui.addToOutput(msg)
         self.__setup()
     

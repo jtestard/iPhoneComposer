@@ -3,6 +3,7 @@ import generator
 import midioutput
 import touchosc
 import os
+
 from tkFileDialog   import askopenfilename
 from threading import Thread
 
@@ -24,8 +25,6 @@ def osc_task(osc):
 if __name__ == '__main__':
     print "### iPhone Composer Python Music Generator ###"
     
-    #Get source file for improv
-    #filename = askopenfilename()
     currentdir = os.path.dirname(os.path.realpath(__file__))
     filename = currentdir+"/../resources/jules.yml"
     oscfilename = currentdir+"/../resources/oscmap.yml"
