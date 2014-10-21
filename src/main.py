@@ -31,7 +31,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "-f","--file",
         required=False,
-        default=currentdir+"/../resources/jules.yml",
+        default=currentdir+"/../resources/default.yml",
         action="store",
         dest="filename",
         help = "file name"

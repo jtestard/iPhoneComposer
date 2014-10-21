@@ -106,7 +106,6 @@ class TouchOSC(object):
         addresses = [] #Actual values
         prereqs = [] #Reset values
         print "sending state"
-        import pdb; pdb.set_trace()
         for attribute in self.__generator.state:
             content = self.__generator.state[attribute]
             if attribute=='instrument':
