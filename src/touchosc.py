@@ -128,11 +128,6 @@ class TouchOSC(object):
                     prereqs.append('/pitch/field'+str(letter)+" 0")
                 for idx,l in enumerate(content['list']):
                     addresses.append('/pitch/field'+str(self.__alphabetDict[idx+1])+" "+str(float(l)))
-            elif attribute=='octave':
-                for letter in self.__alphabetDict.values()[:4]:
-                    prereqs.append('/pitch/octave'+str(letter)+" 0")
-                for idx,l in enumerate(content['list']):
-                    addresses.append('/pitch/octave'+str(self.__alphabetDict[idx+1])+" "+str(float(l)))
             elif attribute=='amplitude':
                 for letter in self.__alphabetDict.values()[:4]:
                     prereqs.append('/volume/amplitude'+str(letter)+" 0")
@@ -232,11 +227,6 @@ class TouchOSC(object):
                                 self.__gui.update('field order',self.__orderDict[self.__order(float(val[1:][:-1]))])
                             else:
                                 self.__gui.update('field list '+str(self.__reverseAlphabetDict[addr[-1]]),int(round(float(val[1:][:-1]))))
-                        elif addr.startswith('/pitch/octave'):
-                            if addr[-5:]=='order':#if the last 5 letters of the address are "order"
-                                self.__gui.update('octave order',self.__orderDict[self.__order(float(val[1:][:-1]))])
-                            else:
-                                self.__gui.update('octave list '+str(self.__reverseAlphabetDict[addr[-1]]),int(round(float(val[1:][:-1]))))
                         else:
                             pass
                     self.__gui.addToOSC(msg)

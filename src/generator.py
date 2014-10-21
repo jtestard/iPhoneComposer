@@ -16,11 +16,11 @@ class Generator(object):
     
     def __init__(self,filename):
         """
-        >>> g = Generator("../resources/state.yml")
+        >>> g = Generator("../resources/default.yml")
         >>> g.state["instrument"]
         45
         >>> g.state["bpm"]
-        120
+        110
         """        
         #The state of the generator describes what the generator will generate.
         #It follows the AthenaCL standard.
@@ -46,8 +46,8 @@ class Generator(object):
         #This is a mapping between the path markov weights and the paths themselves. This
         #mapping is required because the index of a path may vary in the list.
         self.alphabet = list(ascii_lowercase)
-        self.sizes = {'rhythm':16,'field':8,'octave':4,'amplitude':4,'path':8,'panning':4}
-        self.fills = {'rhythm':1,'field':0,'octave':0,'amplitude':.5,'panning':.5}
+        self.sizes = {'rhythm':16,'field':16,'amplitude':16,'path':8,'panning':16}
+        self.fills = {'rhythm':1,'field':0,'amplitude':.5,'panning':0}
         self.mkvpathsmap = {}
         self.mkvpathsmap['idx']=[]
         self.mkvpathsmap['weight']=[]
@@ -64,7 +64,7 @@ class Generator(object):
         self.__computeOrderEng(parameters,"path")
         
         #Fills the blanks for all of the non markov stuff.
-        for attributeName in ['rhythm','amplitude','panning','field','octave']:
+        for attributeName in ['rhythm','amplitude','panning','field']:
             order = parameters[attributeName]['order']
             parameters[attributeName]['order'] = order['type']
             parameters[attributeName]['order_args'] = order['args']
@@ -86,7 +86,7 @@ class Generator(object):
         This method computes the order parameter of some of the attributes of the state
         """
         
-        if attributeName not in ["path","rhythm","field","octave","amplitude","panning"]:
+        if attributeName not in ["path","rhythm","field","amplitude","panning"]:
             raise Exception("Attempting to assign an order to an invalid attribute!")
         else:
             size = len(parameters[attributeName]['list'])
@@ -201,10 +201,6 @@ class Generator(object):
                 self.state['field']['list'][int(attribute.split(" ")[-1])-1] = value
             elif attribute.startswith("field order"):
                 self.__updateOrder('field',value)
-            elif attribute.startswith("octave list"):
-                self.state['octave']['list'][int(attribute.split(" ")[-1])-1] = value
-            elif attribute.startswith("octave order"):
-                self.__updateOrder('octave',value)
             else:
                 #Should not happen
                 raise Exception("generator.update() called with invalid attribute {}".format(attribute))
@@ -258,9 +254,6 @@ class Generator(object):
             #Alter note using field parameter
             field = self.state['field']['list'][self.state['field']['order_eng'].next()]
             pitch += field
-            #Alter note using octave parameter
-            octave = self.state['octave']['list'][self.state['octave']['order_eng'].next()]*12
-            pitch += octave
             #Keep values between bounds
             if pitch < 0:
                 pitch = 0
@@ -288,7 +281,8 @@ class Generator(object):
         
         #Setup volume
         return
-    
+   
+    # Main loop function
     def run(self):
         self.__setupBuffer()
         while self.active:
@@ -355,7 +349,7 @@ class GrammarGenerator(RandomGenerator):
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
-    g = Generator("../resources/state.yml")
+    g = Generator("../resources/default.yml")
     g.generate()
     g.generate()
     g.generate()

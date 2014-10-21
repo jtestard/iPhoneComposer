@@ -199,14 +199,6 @@ class GUI(object):
             if not value==self.vars['field']['order'].get():
                 if self.__generator.update(attribute,value):
                     self.vars['field']['order'].set(value)
-        elif attribute.startswith('octave list'):
-            if not value==self.__generator.state['octave']['list'][int(attribute.split(" ")[-1])-1]:
-                if self.__generator.update(attribute,value):
-                    self.vars['octave']['list'].set(self.__generator.state['octave']['list'])
-        elif attribute=='octave order':
-            if not value==self.vars['octave']['order'].get():
-                if self.__generator.update(attribute,value):
-                    self.vars['octave']['order'].set(value)
         else:
             #not recognized
             pass
@@ -289,15 +281,6 @@ class GUI(object):
         Tkinter.Entry(internal,textvariable=self.vars['field']['list'],state=Tkinter.DISABLED,width=50).grid(row=10,column=1)
         self.__order(internal,"field",11)
         Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=13,column=0)
-        
-        #octave
-        self.vars['octave'] = {}
-        Tkinter.Label(internal,text="octave list").grid(row=14,column=0)
-        self.vars['octave']['list'] = Tkinter.StringVar()
-        self.vars['octave']['list'].set(str(self.__generator.state['octave']['list']))
-        Tkinter.Entry(internal,textvariable=self.vars['octave']['list'],state=Tkinter.DISABLED,width=50).grid(row=14,column=1)
-        self.__order(internal,"octave",15)
-        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=17,column=0)
         
         #amplitude
         self.vars['amplitude'] = {}
