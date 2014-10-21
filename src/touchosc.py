@@ -1,4 +1,3 @@
-
 """ receiving OSC with pyOSC
 https://trac.v2.nl/wiki/pyOSC
 example by www.ixi-audio.net based on pyOSC documentation
@@ -83,6 +82,9 @@ class TouchOSC(object):
         self.__messageQueue = Queue()
     
     def connect_handler(self,addr, tags, data, source):
+        """
+        Connects to the phone client and calls send_state
+        """
         try:
             print "connecting"
             self.ip = data[0]
@@ -98,9 +100,13 @@ class TouchOSC(object):
             traceback.print_tb(tb)
     
     def send_state(self):
+        """
+        Sends the current state of the python application to the device.
+        """
         addresses = [] #Actual values
         prereqs = [] #Reset values
         print "sending state"
+        import pdb; pdb.set_trace()
         for attribute in self.__generator.state:
             content = self.__generator.state[attribute]
             if attribute=='instrument':
@@ -223,7 +229,6 @@ class TouchOSC(object):
                         elif addr.startswith('/rhythm/dividor'):
                             self.update_rhythm('dividor', val)
                         elif addr.startswith('/pitch/field'):
-                            print "val"
                             if addr[-5:]=='order': #if the last 5 letters of the address are "order"
                                 self.__gui.update('field order',self.__orderDict[self.__order(float(val[1:][:-1]))])
                             else:
