@@ -90,8 +90,8 @@ Once the application is started, the final set up step is to make sure that iPho
  Make sure your MIDI synthesizer uses the `iPhone Composer MIDI output` Midi channel.
 
 ### Notes
- 
-  - The last two tabs (Volume and Markov) are not yet supported. You can still edit markov weights through YAML files.
+  - Amplitude and Volume can be edited but do not have an effect yet.
+  - The Markov generator, while supported, cannot be interacted with and is not displayed properly on the phone interface. 
   - If markov weights are not specifically mentioned on the YAML file, some random weights are generated in order to satisy the system constraints.
   - Weights of 0 cannot be used for markov weights (it would be nice to change that in the future).
   - The save option is not yet supported.

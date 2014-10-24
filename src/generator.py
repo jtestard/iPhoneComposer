@@ -178,7 +178,9 @@ class Generator(object):
                         del self.state['path']['list'][0]
                         del self.mkvpathsmap['idx'][0]
                         del self.mkvpathsmap['weight'][0]
-                    found = False
+                    # Found means we found a slot to put the path on, which means there was
+                    # a "hole" somewhere in the path array.
+                    found = False 
                     for i in range(len(self.mkvpathsmap['idx'])):
                         if i not in self.mkvpathsmap['idx']:
                             self.state['path']['list'].append(value)
