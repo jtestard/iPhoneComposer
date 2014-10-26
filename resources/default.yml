@@ -1,8 +1,8 @@
-instrument: 45
+instrument: 23
 bpm : 110
 rhythm :
   dividor : 4
-  list : [3,3,2,3,3,2,3,3,2,3,3,2,3,2,1,1]
+  list : [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
   order : 
     type : cyclic
     args : a{0}b{1}c{2}d{3}e{4}if{5}g{6}h{7}:{a=2|b=15|c=6|d=1|e=3|f=1|g=3}
@@ -12,7 +12,7 @@ path: #List of pitches should be specified in Music21 format (tone,flat/normal,o
     type : cyclic 
     args : None
 field:
-  list: [0,0,0,2,3,-2,0,0,0,0,2,3,-2,0,0,2]
+  list: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
   order: 
     type: cyclic #markov
     args : None 

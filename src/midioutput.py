@@ -5,7 +5,7 @@ from Queue import Empty
 import Tkinter
 
 class MidiOut(object):
-    def __init__(self,gen,gui):
+    def __init__(self, gen, gui, config):
         """ Test should be changed but good enough for now
         >>> g = generator.Generator("../resources/state.yml")
         >>> midiout = MidiOut(g)

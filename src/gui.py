@@ -7,9 +7,9 @@ import subprocess
 
 class GUI(object):
     
-    def __init__(self,gen):
-        self.phoneIP = 'unknown'
-        self.phonePort = 'unknown'
+    def __init__(self,gen,config):
+        self.deviceIP = 'unknown'
+        self.devicePort = 'unknown'
         
         self.__generator = gen
         try:
@@ -71,7 +71,7 @@ class GUI(object):
             
             #Create the connection fields
             connectPane = Tkinter.PanedWindow(self.__window,orient=Tkinter.VERTICAL)
-            connectPane.grid(row=2,column=1)
+            connectPane.grid(row=4,column=1)
             self.__createConnect(connectPane)
             
             #Dictionaries
@@ -86,7 +86,7 @@ class GUI(object):
             traceback.print_exception(t,v,tb)
             self.__root.quit()
             quit()
-    
+    # TODO: find how to put this application in the foreground
     def raise_above_all(self,window):
         window.attributes('-topmost', 1)
         window.attributes('-topmost', 0)
@@ -116,14 +116,18 @@ class GUI(object):
         Tkinter.Button(pane,text="Connect",command=self.connectCallback).grid(row=1,column=1) 
     
     def __createConnect(self,pane):
-        self.phoneIPaddressVar = Tkinter.StringVar()
-        self.phonePortVar = Tkinter.StringVar()
-        self.phoneIPaddressVar.set("Unknown")
-        self.phonePortVar.set("Unknown")
-        Tkinter.Label(pane,text="Device IP Address : ").grid(row=0,column=0)
-        Tkinter.Entry(pane,textvariable=self.phoneIPaddressVar).grid(row=0,column=1)
-        Tkinter.Label(pane,text="Device Port : ").grid(row=1,column=0)
-        Tkinter.Entry(pane,textvariable=self.phonePortVar).grid(row=1,column=1)
+        self.deviceIPaddressVar = Tkinter.StringVar()
+        self.devicePortVar = Tkinter.StringVar()
+        self.applicationPortVar = Tkinter.StringVar()
+        self.deviceIPaddressVar.set("Unknown")
+        self.devicePortVar.set("Unknown")
+        Tkinter.Label(pane,text="OSC settings").grid(row=0,column=0)
+        Tkinter.Label(pane,text="Device IP Address : ").grid(row=1,column=0)
+        Tkinter.Entry(pane,textvariable=self.deviceIPaddressVar).grid(row=1,column=1)
+        Tkinter.Label(pane,text="Device Input Port : ").grid(row=2,column=0)
+        Tkinter.Entry(pane,textvariable=self.devicePortVar).grid(row=2,column=1)
+        Tkinter.Label(pane,text="Application Input Port : ").grid(row=3,column=0)
+        Tkinter.Entry(pane,textvariable=self.devicePortVar,state=Tkinter.DISABLED).grid(row=3,column=1)
     
     def __updateConnect(self,ip,port):
         pass
@@ -149,15 +153,15 @@ class GUI(object):
        self.__root.quit()
     
     def connectCallback(self):
-        self.phoneIP = self.phoneIPaddressVar.get()
-        self.phonePort = self.phonePortVar.get()
+        self.deviceIP = self.deviceIPaddressVar.get()
+        self.devicePort = self.devicePortVar.get()
         c = OSC.OSCClient()
         send_address = socket.gethostbyname(socket.gethostname()), 8000 
         c.connect(send_address)
         msg = OSC.OSCMessage()
         msg.setAddress('/connect')
-        msg.append(self.phoneIP)
-        msg.append(int(self.phonePort))
+        msg.append(self.deviceIP)
+        msg.append(int(self.devicePort))
         c.send(msg)
         c.close()
     

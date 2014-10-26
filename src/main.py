@@ -37,14 +37,21 @@ if __name__ == '__main__':
         help = "file name"
     )
     options = parser.parse_args()
-    filename = options.filename 
-    oscfilename = currentdir+"/../resources/oscmap.yml"
+
+    # Obtaining configuration file names
+    gen_filename = options.filename 
+    oscmap_filename = currentdir+"/../resources/oscmap.yml"
+    config_filename = "%s/../resources/oscmap.yml" % currentdir
     
+    # Building config object
+    with open(config_filename) as config_file:
+        config = yaml.load(config_file)
+
     #Building modules
-    gen = generator.Generator(filename)
-    gui = gui.GUI(gen)
-    midiout = midioutput.MidiOut(gen,gui)
-    osc = touchosc.TouchOSC(gen,gui,oscfilename)
+    gen = generator.Generator(gen_filename, config)
+    gui = gui.GUI(gen, config)
+    midiout = midioutput.MidiOut(gen, gui, config)
+    osc = touchosc.TouchOSC(gen, gui, oscmap_filename, config)
     
     #Building workers
     generator_worker = Thread(target=generator_task,args=(gen,))

@@ -21,13 +21,15 @@ from numbers import Number
 
 class TouchOSC(object):
     
-    def __init__(self,gen,gui,filename):
+    def __init__(self,gen,gui,filename,config):
         
         self.__generator = gen
         self.__gui = gui
+        self.inputPort = 8000
         
         #Use default input port 8000
-        receive_address = socket.gethostbyname(socket.gethostname()), 8000
+        #TODO : make this configurable
+        receive_address = socket.gethostbyname(socket.gethostname()), self.inputPort
         
         try:
             self.server = OSC.ThreadingOSCServer(receive_address)
@@ -42,7 +44,8 @@ class TouchOSC(object):
         self.server.addDefaultHandlers()
         
         #Read in the oscmap
-        self.oscmap = yaml.load(open(filename))
+        with open(filename) as f:
+            self.oscmap = yaml.load(f)
         for touchosctab in self.oscmap:
             self.server.addMsgHandler("/"+str(touchosctab),self.printing_handler)
             for touchoscop in self.oscmap[touchosctab]:
@@ -134,7 +137,7 @@ class TouchOSC(object):
                     state_addresses.append('/path/chosen'+ str(idx+1)+ ' '+ path)
                 # Path generator option
                 state_addresses.append('/path/generator/' +
-                        str(self.__reverseOrderDict[content['order']]+1)+"/1 1"
+                        str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
                 # TODO: Put the send instructions for the path markov state here.
             elif attribute=='rhythm':
@@ -151,7 +154,7 @@ class TouchOSC(object):
                 state_addresses.append('/rhythm/dividorValue ' + str(content['dividor']))
                 # Rhyhtm generator option
                 state_addresses.append('/rhythm/generator/' +
-                        str(self.__reverseOrderDict[content['order']]+1)+"/1 1"
+                        str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
             # TODO: State is defined using the "field" keyword while the interface uses "pitch".
             # A single naming should be used.
@@ -165,7 +168,7 @@ class TouchOSC(object):
                     state_addresses.append('/pitch/lp'+ str(i+1)+ " "+ str(p))
                 # Pitch generator option
                 state_addresses.append('/pitch/generator/' +
-                        str(self.__reverseOrderDict[content['order']]+1)+"/1 1"
+                        str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
             elif attribute=='amplitude':
                 # Default amplitude pattern
@@ -177,7 +180,7 @@ class TouchOSC(object):
                     state_addresses.append('/amplitude/l'+ str(i+1)+ " "+ str(p))
                 # Amplitude generator option
                 state_addresses.append('/amplitude/generator/' +
-                        str(self.__reverseOrderDict[content['order']]+1)+"/1 1"
+                        str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
             elif attribute=='panning':
                 # Default panning pattern
@@ -189,7 +192,7 @@ class TouchOSC(object):
                     state_addresses.append('/panning/l'+ str(i+1)+ " "+ str(p))
                 # Panning generator option
                 state_addresses.append('/panning/generator/' +
-                        str(self.__reverseOrderDict[content['order']]+1)+"/1 1"
+                        str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
             else:
                 #Not recognized
@@ -273,7 +276,8 @@ class TouchOSC(object):
                         elif addr.startswith('/path/generator'):
                             gen_number = addr.split("/")[-2]
                             gen_type = self.__orderDict[int(gen_number)]
-                            self.update_generator('path', gen_type)
+                            value = int(round(float(val[1:][:-1])))
+                            self.update_generator('path', gen_type,value)
                         elif addr.startswith('/path/list'):
                             row, col = tuple(addr.split("/")[-2:])
                             board_path = "/%s/%s" % (row, col) # Position on the path board
@@ -286,14 +290,16 @@ class TouchOSC(object):
                         elif addr.startswith('/rhythm/generator'):
                             gen_number = addr.split("/")[-2]
                             gen_type = self.__orderDict[int(gen_number)]
-                            self.update_generator('rhythm', gen_type)
+                            value = int(round(float(val[1:][:-1])))
+                            self.update_generator('rhythm', gen_type, value)
                         elif addr.startswith('/rhythm/dividor'):
                             dividor = self.__dividorValue(float(val[1:][:-1]))
                             self.update_dividor(dividor)
                         elif addr.startswith('/pitch/generator'):
                             gen_number = addr.split("/")[-2]
                             gen_type = self.__orderDict[int(gen_number)]
-                            self.update_generator('pitch', gen_type)
+                            value = int(round(float(val[1:][:-1])))
+                            self.update_generator('pitch', gen_type, value)
                         elif addr.startswith('/pitch/list'):
                             pitch = int(round(float(val[1:][:-1]))) 
                             list_idx = int(addr.split("/")[-1])
@@ -334,19 +340,23 @@ class TouchOSC(object):
         self.__gui.update('bpm', bpm)
         self.send_message('/basic/bpmValue', bpm)
 
-    def update_generator(self,category, gen_type):
-        if category=='path':
-            self.__gui.update('path order', gen_type)
-        elif category=='rhythm':
-            self.__gui.update('rhythm order', gen_type)
-        elif category=='pitch':
-            self.__gui.update('field order', gen_type)
-        elif category=='amplitude':
-            self.__gui.update('amplitude order', gen_type)
-        elif category=='panning':
-            self.__gui.update('panning order', gen_type)
+    def update_generator(self,category, gen_type, value):
+        if value > 0:
+            if category=='path':
+                self.__gui.update('path order', gen_type)
+            elif category=='rhythm':
+                self.__gui.update('rhythm order', gen_type)
+            elif category=='pitch':
+                self.__gui.update('field order', gen_type)
+            elif category=='amplitude':
+                self.__gui.update('amplitude order', gen_type)
+            elif category=='panning':
+                self.__gui.update('panning order', gen_type)
+            else:
+                print "Error : unexpected generator category!"
         else:
-            print "Error : unexpected generator category!"
+            # Ignore calls to the generator with value 0.
+            pass
     
     def update_path(self,board_path,value):
         note = self.__reversePathDict[board_path]

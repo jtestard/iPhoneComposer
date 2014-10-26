@@ -14,7 +14,7 @@ from athenaCL.libATH import markov
 
 class Generator(object):
     
-    def __init__(self,filename):
+    def __init__(self, filename, config):
         """
         >>> g = Generator("../resources/default.yml")
         >>> g.state["instrument"]
@@ -153,7 +153,9 @@ class Generator(object):
         weights=weights[:-1]
         mkv = letters+":{"+weights+"}"
         self.state['path']['order_args'] = mkv
-        self.state['path']['order_eng'] = MarkovGenerator(mkv) 
+        # TODO: remove this hack.
+        self.state['path']['order_eng'] = MarkovGenerator(mkv)
+        self.__updateOrder('path',self.state['path']['order'])
     
     def update(self,attribute,value):
         try:
@@ -218,15 +220,14 @@ class Generator(object):
         pass
     
     def __updateOrder(self,attribute,value):
-        if not value==self.state[attribute]['order']:
-            self.state[attribute]['order'] = value
-            size = len(self.state[attribute]['list'])
-            if value=="cyclic":
-                self.state[attribute]['order_eng'] = CyclicGenerator(size)
-            elif value=="uniformRandom":
-                self.state[attribute]['order_eng'] = UniformRandomGenerator(size)
-            else: 
-                self.state[attribute]['order_eng'] = MarkovGenerator(self.state[attribute]['order_args'])
+        self.state[attribute]['order'] = value
+        size = len(self.state[attribute]['list'])
+        if value=="cyclic":
+            self.state[attribute]['order_eng'] = CyclicGenerator(size)
+        elif value=="uniformRandom":
+            self.state[attribute]['order_eng'] = UniformRandomGenerator(size)
+        else: 
+            self.state[attribute]['order_eng'] = MarkovGenerator(self.state[attribute]['order_args'])
     
     def __randomMarkovString(self,size):
         letters = ""
