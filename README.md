@@ -96,4 +96,13 @@ Once the application is started, the final set up step is to make sure that iPho
   - Weights of 0 cannot be used for markov weights (it would be nice to change that in the future).
   - The save option is not yet supported.
   - The application does not support dynamic port allocation yet, so please clear the 8000 and 9000 ports on your machine in order for the machine to run properly.
- 
+
+## Opinion :
+
+### Change the way Path works
+ - Make path fixed length (makes things easier to understand)
+ - Each note has its own board. One value per board
+ - This way, duplicate values can be chosen (they will be on different boards).
+ - Easier to deal with Markov.
+ - More handy for the user.
+ - Visualization simpler.

@@ -55,7 +55,10 @@ class Generator(object):
         self.__bindMarkovAndPath()
     
     def readState(self):
-        parameters = yaml.load(open(self.file))
+        # Read algorithm state
+        with open(self.file) as f:
+            parameters = yaml.load(f)
+
         #Special behavior for paths
         parameters['path']['list'] = utils.make_set(parameters['path']['list'])
         order = parameters['path']['order']
@@ -136,6 +139,9 @@ class Generator(object):
         weights = self.state['path']['order_args'].split(":")[1][1:-1].split("|")
         try:
             for idx,p in enumerate(self.state['path']['list']):
+                # TODO: increase documentation on mkvpathsmap.
+                # mkvpathsmap['idx'] contains the index of each note in the list. This index can change
+                # whenever a path is selected/unselected.
                 self.mkvpathsmap['idx'].append(idx)
                 self.mkvpathsmap['weight'].append(weights[idx].split("=")[1])
         except:
@@ -198,13 +204,20 @@ class Generator(object):
             elif attribute=="rhythm order":
                 self.__updateOrder('rhythm',value)
             elif attribute.startswith("rhythm list"):
-                self.state['rhythm']['list'][int(attribute.split(" ")[-1])-1] = value
+                idx = int(attribute.split(" ")[-1])-1
+                self.state['rhythm']['list'][idx] = value
             elif attribute.startswith("rhythm dividor"):
                 self.state['rhythm']['dividor'] = value
             elif attribute.startswith("field list"):
-                self.state['field']['list'][int(attribute.split(" ")[-1])-1] = value
+                idx = int(attribute.split(" ")[-1])-1
+                self.state['field']['list'][idx] = value
             elif attribute.startswith("field order"):
                 self.__updateOrder('field',value)
+            elif attribute.startswith('amplitude list'):
+                idx = int(attribute.split(" ")[-1])-1
+                self.state['amplitude']['list'][idx] = value
+            elif attribute.startswith("amplitude order"):
+                self.__updateOrder('amplitude',value)
             else:
                 #Should not happen
                 raise Exception("generator.update() called with invalid attribute {}".format(attribute))
@@ -249,7 +262,17 @@ class Generator(object):
         duration = (float(mult) * 60.0) / (float(div) * float(self.state['bpm']))
         
         #Define note pitch from path. An "S" in the path can be used for silence.
-        pitch = self.state['path']['list'][self.mkvpathsmap['idx'].index(self.state['path']['order_eng'].next())]
+        #TODO : remove this hack
+        if len(self.mkvpathsmap['idx'])==0:
+            pitch = 'S'
+        else:
+            generator_idx = self.state['path']['order_eng'].next()
+            # TODO : remove this hack.
+            while generator_idx not in self.mkvpathsmap['idx']:
+                generator_idx = self.state['path']['order_eng'].next()
+            idx_of_path_in_list = self.mkvpathsmap['idx'].index(generator_idx)
+            pitch = self.state['path']['list'][idx_of_path_in_list]
+        
         if pitch=='S':
             pitch = 0
         else:

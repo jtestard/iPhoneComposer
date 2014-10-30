@@ -4,6 +4,7 @@ import midioutput
 import touchosc
 import os
 import argparse
+import yaml
 
 from tkFileDialog   import askopenfilename
 from threading import Thread
@@ -29,44 +30,60 @@ if __name__ == '__main__':
     currentdir = os.path.dirname(os.path.realpath(__file__))
     
     parser.add_argument(
-        "-f","--file",
+        "-a","--algorithm-file",
         required=False,
-        default=currentdir+"/../resources/default.yml",
+        default=currentdir+"/../resources/presets/default.yml",
         action="store",
-        dest="filename",
-        help = "file name"
+        dest="algorithm_filename",
+        help = "File containing the state of the algorithm used by the application."
+    )
+    parser.add_argument(
+        "-c","--config-file",
+        required=False,
+        default=currentdir+"/../resources/application/player1_config.yml",
+        action="store",
+        dest="config_filename",
+        help="File containing application default configurations"
+    )
+    parser.add_argument(
+        "-o","--osc-filename",
+        required=False,
+        default=currentdir+"/../resources/osc/oscmap.yml",
+        action="store",
+        dest="osc_filename",
+        help="File containing osc control mappings"
     )
     options = parser.parse_args()
 
     # Obtaining configuration file names
-    gen_filename = options.filename 
-    oscmap_filename = currentdir+"/../resources/oscmap.yml"
-    config_filename = "%s/../resources/oscmap.yml" % currentdir
+    gen_filename = options.algorithm_filename 
+    oscmap_filename = options.osc_filename
+    config_filename = options.config_filename
     
     # Building config object
     with open(config_filename) as config_file:
         config = yaml.load(config_file)
 
-    #Building modules
+    # Building modules
     gen = generator.Generator(gen_filename, config)
     gui = gui.GUI(gen, config)
     midiout = midioutput.MidiOut(gen, gui, config)
     osc = touchosc.TouchOSC(gen, gui, oscmap_filename, config)
     
-    #Building workers
+    # Building workers
     generator_worker = Thread(target=generator_task,args=(gen,))
     midiOut_worker = Thread(target=midiOut_task,args=(midiout,))
     osc_worker = Thread(target=osc_task,args=(osc,))
     
-    #Start workers
+    # Start workers
     generator_worker.start()
     midiOut_worker.start()
     osc_worker.start()
     
-    #Start GUI
+    # Start GUI
     gui.run()
     
-    #Prepare interrupt
+    # Prepare interrupt
     generator_worker.join()
     midiOut_worker.join()
     pass

@@ -1,0 +1,6 @@
+device_port : 9000
+application_port : 8001
+window_width : 1010
+window_height : 724
+midi_channel : "iPhoneComposer Channel 2"
+

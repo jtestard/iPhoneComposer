@@ -22,22 +22,15 @@ from numbers import Number
 class TouchOSC(object):
     
     def __init__(self,gen,gui,filename,config):
-        
+
         self.__generator = gen
         self.__gui = gui
-        self.inputPort = 8000
+        self.devicePort = config['device_port']
+        self.applicationPort = config['application_port']
         
-        #Use default input port 8000
-        #TODO : make this configurable
-        receive_address = socket.gethostbyname(socket.gethostname()), self.inputPort
-        
-        try:
-            self.server = OSC.ThreadingOSCServer(receive_address)
-            self.client = OSC.OSCClient()
-        except:
-            t,v,tb = sys.exc_info()
-            self.__gui.osc.insert(Tkinter.END,str(t)+":"+str(v))
-        
+        # Creates a OSC server and client
+        self.update_application_server() 
+
         # this registers a 'default' handler (for unmatched messages), 
         # an /'error' handler, an '/info' handler.
         # And, if the client supports it, a '/subscribe' & '/unsubscribe' handler
@@ -87,17 +80,45 @@ class TouchOSC(object):
         #Queue for osc messages
         self.__messageQueue = Queue()
     
+    def update_application_server(self):
+        """
+        Creates and starts a OSC server. Creates but does not start a OSC client.
+        """
+        # Close OSC client and server if they exist
+        if hasattr(self, 'server'):
+            self.server.close()
+        if hasattr(self, 'client'):
+            self.client.close()
+        # Create OSC server and client
+        receive_address = socket.gethostbyname(socket.gethostname()), self.applicationPort        
+        try:
+            self.server = OSC.ThreadingOSCServer(receive_address)
+            self.client = OSC.OSCClient()
+        except:
+            t,v,tb = sys.exc_info()
+            self.__gui.osc.insert(Tkinter.END,str(t)+":"+str(v))
+
+    
     def connect_handler(self,addr, tags, data, source):
         """
         Connects to the phone client and calls send_state
         """
         try:
             print "connecting"
-            self.ip = data[0]
-            self.port = data[1]
-            self.__gui.addToOSC("Phone ip address : " + self.ip + ", phone port : " + str(self.port) + "\n")
-            address = self.ip,self.port
-            self.ip_port = "%s:%d" % (self.ip, self.port)
+            self.deviceIP = data[0]
+            self.devicePort = data[1]
+            self.applicationPort = data[2]
+            self.__gui.addToOSC(
+                    "Device IP: %s, device port : %d, application port : %d" % (
+                        self.deviceIP,
+                        self.devicePort,
+                        self.applicationPort
+                    )
+            )
+            address = self.deviceIP, self.devicePort
+            # TODO: currently will not update application port correctly.
+            # self.update_application_server()
+            self.ip_port = "%s:%d" % (self.deviceIP, self.devicePort)
             self.client.connect(address)
             self.send_state()
         except:
@@ -304,6 +325,10 @@ class TouchOSC(object):
                             pitch = int(round(float(val[1:][:-1]))) 
                             list_idx = int(addr.split("/")[-1])
                             self.update_pitch(pitch,list_idx)
+                        elif addr.startswith('/amplitude/list'):
+                            amplitude = float(val[1:][:-1])
+                            list_idx = int(addr.split("/")[-1])
+                            self.update_amplitude(amplitude,list_idx)
                         else:
                             pass
                     self.__gui.addToOSC(msg)
@@ -398,6 +423,10 @@ class TouchOSC(object):
     def update_pitch(self,pitch,list_idx):
         self.__gui.update('field list %d' % list_idx, pitch)
         self.send_message('/pitch/lp%d' % list_idx, pitch)
+
+    def update_amplitude(self,amplitude,list_idx):
+        self.__gui.update('amplitude list %d' % list_idx, amplitude)
+        self.send_message('/amplitude/l%d' % list_idx, amplitude)
 
     def reset_handler(self,addr, tags, data, source):
         try:

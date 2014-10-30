@@ -24,8 +24,9 @@ class MidiOut(object):
         #else:
         #    self.__midiOut.open_virtual_port("My virtual output")
         #    msg = "MIDI output chosen : my virtual output\n"
-        self.__midiOut.open_virtual_port("iPhone Composer Midi Output")
-        msg = "MIDI output chosen : iPhone Composer Midi Output\n"
+        channel_name = config['midi_channel']
+        self.__midiOut.open_virtual_port(channel_name)
+        msg = "MIDI output chosen : %s\n" % channel_name
         self.__gui.addToOutput(msg)
         self.__setup()
     

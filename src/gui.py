@@ -8,25 +8,34 @@ import subprocess
 class GUI(object):
     
     def __init__(self,gen,config):
-        self.deviceIP = 'unknown'
-        self.devicePort = 'unknown'
+        # These will be set later (might consider removing them?)
+        self.deviceIP = ''
+        self.devicePort = 0
+        self.applicationPort = 0
+
+        self.config = config
         
         self.__generator = gen
         try:
             self.__root=Tkinter.Tk()
+            screen_w = self.__root.winfo_screenwidth()
+            screen_h = self.__root.winfo_screenheight()
+            window_w = self.config['window_width']
+            window_h = self.config['window_height']
+            off_w = (screen_w - window_w)/2;
+            off_h = (screen_h - window_h)/4; # use 4 instead of 2
+            self.__root.geometry("%dx%d+%d+%d" % (
+                window_w,
+                window_h,
+                off_w,
+                off_h
+            ))
             
-            self.__root.geometry("1100x800+200+0")
-            
-            #Delete Window callback
+            # Delete Window callback
             self.__root.protocol("WM_DELETE_WINDOW", self.exitCallback)
             self.__window = self.__root
             
             self.vars = {}
-            
-            #Label the application  
-            self.__s = Tkinter.StringVar()
-            self.__s.set('iPhone Composer')
-            Tkinter.Label(self.__window,textvariable=self.__s,font=("Helvetica", 24)).grid(row=0,column=0)
             
             #Add a Paned Window to contain application state information
             paned = Tkinter.PanedWindow(self.__window,orient=Tkinter.VERTICAL)
@@ -71,7 +80,7 @@ class GUI(object):
             
             #Create the connection fields
             connectPane = Tkinter.PanedWindow(self.__window,orient=Tkinter.VERTICAL)
-            connectPane.grid(row=4,column=1)
+            connectPane.grid(row=2,column=1)
             self.__createConnect(connectPane)
             
             #Dictionaries
@@ -120,14 +129,15 @@ class GUI(object):
         self.devicePortVar = Tkinter.StringVar()
         self.applicationPortVar = Tkinter.StringVar()
         self.deviceIPaddressVar.set("Unknown")
-        self.devicePortVar.set("Unknown")
+        self.devicePortVar.set(str(self.config['device_port']))
+        self.applicationPortVar.set(str(self.config['application_port']))
         Tkinter.Label(pane,text="OSC settings").grid(row=0,column=0)
         Tkinter.Label(pane,text="Device IP Address : ").grid(row=1,column=0)
         Tkinter.Entry(pane,textvariable=self.deviceIPaddressVar).grid(row=1,column=1)
         Tkinter.Label(pane,text="Device Input Port : ").grid(row=2,column=0)
         Tkinter.Entry(pane,textvariable=self.devicePortVar).grid(row=2,column=1)
         Tkinter.Label(pane,text="Application Input Port : ").grid(row=3,column=0)
-        Tkinter.Entry(pane,textvariable=self.devicePortVar,state=Tkinter.DISABLED).grid(row=3,column=1)
+        Tkinter.Entry(pane,textvariable=self.applicationPortVar).grid(row=3,column=1)
     
     def __updateConnect(self,ip,port):
         pass
@@ -143,7 +153,7 @@ class GUI(object):
        self.__generator.active = False
        #Close the osc thread by sending a quit osc message
        c = OSC.OSCClient()
-       send_address = socket.gethostbyname(socket.gethostname()), 8000 
+       send_address = socket.gethostbyname(socket.gethostname()), self.applicationPort
        c.connect(send_address)
        msg = OSC.OSCMessage()
        msg.setAddress('/quit')
@@ -154,14 +164,18 @@ class GUI(object):
     
     def connectCallback(self):
         self.deviceIP = self.deviceIPaddressVar.get()
-        self.devicePort = self.devicePortVar.get()
+        # TODO: Add checks for non integer input
+        self.devicePort = int(self.devicePortVar.get())
+        self.applicationPort = int(self.applicationPortVar.get())
         c = OSC.OSCClient()
-        send_address = socket.gethostbyname(socket.gethostname()), 8000 
+        send_address = socket.gethostbyname(socket.gethostname()), self.applicationPort
         c.connect(send_address)
         msg = OSC.OSCMessage()
         msg.setAddress('/connect')
-        msg.append(self.deviceIP)
-        msg.append(int(self.devicePort))
+        # This information is to update the OSC module
+        msg.append(self.deviceIP) # data[0]
+        msg.append(self.devicePort) # data[1]
+        msg.append(self.applicationPort) # data[2]
         c.send(msg)
         c.close()
     
@@ -188,6 +202,7 @@ class GUI(object):
                     self.vars['rhythm']['order'].set(value)
         elif attribute.startswith('rhythm list'):
             idx = int(attribute.split(" ")[-1])-1
+            # If value to update is not already equal to existing value.
             if not value==self.__generator.state['rhythm']['list'][idx]:
                 if self.__generator.update(attribute,value):
                     self.vars['rhythm']['list'].set(str(self.__generator.state['rhythm']['list']))
@@ -196,13 +211,27 @@ class GUI(object):
                 if self.__generator.update(attribute,value):
                     self.vars['rhythm']['dividor'].set(value)
         elif attribute.startswith('field list'):
-            if not value==self.__generator.state['field']['list'][int(attribute.split(" ")[-1])-1]:
+            # If value to update is not already equal to existing value.
+            idx = int(attribute.split(" ")[-1])-1
+            if not value==self.__generator.state['field']['list'][idx]:
                 if self.__generator.update(attribute,value):
                     self.vars['field']['list'].set(self.__generator.state['field']['list'])
         elif attribute=='field order':
             if not value==self.vars['field']['order'].get():
                 if self.__generator.update(attribute,value):
                     self.vars['field']['order'].set(value)
+        elif attribute.startswith('amplitude list'):
+            idx = int(attribute.split(" ")[-1])-1
+            # If value to update is not already equal to existing value.
+            if not value==self.__generator.state['amplitude']['list'][idx]:
+                if self.__generator.update(attribute,value):
+                    self.vars['amplitude']['list'].set(
+                        self.__generator.state['amplitude']['list']
+                    )
+        elif attribute=='amplitude order':
+            if not value==self.vars['amplitude']['order'].get():
+                if self.__generator.update(attribute,value):
+                    self.vars['amplitude']['order'].set(value)
         else:
             #not recognized
             pass
@@ -235,8 +264,8 @@ class GUI(object):
         Tkinter.Entry(pane,textvariable=self.vars[type]['order_args'],state=Tkinter.DISABLED,width=50).grid(row=t_row+1,column=1)
     
     def __createApplicationState(self,paned):
-        #Label
-        panedLabel = Tkinter.Label(paned,text="Texture 1")
+        #Label the application  
+        panedLabel = Tkinter.Label(paned,text='iPhone Composer',font=("Helvetica", 24))
         paned.add(panedLabel)
         
         #Internal pane
