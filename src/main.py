@@ -16,6 +16,7 @@ def generator_task(generator):
 
 def midiOut_task(midiout):
     print "New midi output worker started..."
+    osc
     midiout.run()
     pass
 
@@ -65,17 +66,26 @@ if __name__ == '__main__':
         config = yaml.load(config_file)
 
     # Building modules
+    print "Building modules..."
     gen = generator.Generator(gen_filename, config)
+    print "Generator setup complete"
     gui = gui.GUI(gen, config)
+    print "GUI setup complete"
     midiout = midioutput.MidiOut(gen, gui, config)
+    print "MidiOut setup complete"
     osc = touchosc.TouchOSC(gen, gui, oscmap_filename, config)
+    print "OSC setup complete"
     
     # Building workers
+    print("Building workers...")
     generator_worker = Thread(target=generator_task,args=(gen,))
     midiOut_worker = Thread(target=midiOut_task,args=(midiout,))
     osc_worker = Thread(target=osc_task,args=(osc,))
     
     # Start workers
+    generator_worker.daemon = True
+    midiOut_worker.daemon = True
+    osc_worker.daemon = True
     generator_worker.start()
     midiOut_worker.start()
     osc_worker.start()

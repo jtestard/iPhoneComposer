@@ -47,27 +47,21 @@ class Generator(object):
         #mapping is required because the index of a path may vary in the list.
         self.alphabet = list(ascii_lowercase)
         self.sizes = {'rhythm':16,'field':16,'amplitude':16,'path':8,'panning':16}
-        self.fills = {'rhythm':1,'field':0,'amplitude':.5,'panning':0}
+        self.fills = {'rhythm':1,'field':0,'amplitude':.5,'path':'S','panning':0}
         self.mkvpathsmap = {}
         self.mkvpathsmap['idx']=[]
         self.mkvpathsmap['weight']=[]
         self.state = self.readState()
-        self.__bindMarkovAndPath()
+        # self.__bindMarkovAndPath() # THIS METHOD SHOULD NO LONGER BE NECESSARY XXX
     
     def readState(self):
         # Read algorithm state
         with open(self.file) as f:
             parameters = yaml.load(f)
 
-        #Special behavior for paths
-        parameters['path']['list'] = utils.make_set(parameters['path']['list'])
-        order = parameters['path']['order']
-        parameters['path']['order'] = order['type']
-        parameters['path']['order_args'] = order['args']
-        self.__computeOrderEng(parameters,"path")
-        
         #Fills the blanks for all of the non markov stuff.
-        for attributeName in ['rhythm','amplitude','panning','field']:
+        for attributeName in ['rhythm','amplitude','path','panning','field']:
+            # TODO: check if this renaming is necessary
             order = parameters[attributeName]['order']
             parameters[attributeName]['order'] = order['type']
             parameters[attributeName]['order_args'] = order['args']
@@ -78,17 +72,22 @@ class Generator(object):
             #Assign the order engine
             self.__computeOrderEng(parameters,attributeName)
         
+        # Indicates currently selected path on Path Map. Value can be 0-7.
+        parameters['path']['selected'] = 0
+
         return parameters
     
     def __fillList(self,parameters,attribute,size,fillVal):
-        for i in range(len(parameters[attribute]['list']),size):
+        """
+        Fills parameters list with fill values for the corresponding attribute.
+        """
+        for i in xrange(len(parameters[attribute]['list']),size):
             parameters[attribute]['list'].append(fillVal)
     
     def __computeOrderEng(self,parameters,attributeName):
         """
         This method computes the order parameter of some of the attributes of the state
         """
-        
         if attributeName not in ["path","rhythm","field","amplitude","panning"]:
             raise Exception("Attempting to assign an order to an invalid attribute!")
         else:
@@ -105,6 +104,10 @@ class Generator(object):
         return
     
     def __randomMarkov(self,parameters,attributeName):
+        """
+        This method creates random markov values when they are not specified.
+        To self => is this necessary (can fill values be used instead)?
+        """
         if 'order_args' not in parameters[attributeName]:
             parameters[attributeName]['order_args'] = self.__randomMarkovString(self.sizes[attributeName])
         elif parameters[attributeName]['order_args'] == 'None':
@@ -130,39 +133,6 @@ class Generator(object):
                 print v
                 traceback.print_tb(tb)
 
-    def __bindMarkovAndPath(self):
-        #This method binds the path's markov weights with its list. This is required because the number of elements in the path is dynamic.
-        if 'order_args' not in self.state['path']:
-            self.state['path']['order_args'] = self.__randomMarkovString(len(self.state['path']['list']))
-        elif self.state['path']['order_args'] == 'None':
-            self.state['path']['order_args'] = self.__randomMarkovString(len(self.state['path']['list']))
-        weights = self.state['path']['order_args'].split(":")[1][1:-1].split("|")
-        try:
-            for idx,p in enumerate(self.state['path']['list']):
-                # TODO: increase documentation on mkvpathsmap.
-                # mkvpathsmap['idx'] contains the index of each note in the list. This index can change
-                # whenever a path is selected/unselected.
-                self.mkvpathsmap['idx'].append(idx)
-                self.mkvpathsmap['weight'].append(weights[idx].split("=")[1])
-        except:
-            t,v,tb = sys.exc_info()
-            print t
-            print v
-            traceback.print_tb(tb)
-            
-    def __updateMarkovForPath(self):
-        letters = ""
-        weights = ""
-        for i in range(len(self.mkvpathsmap['idx'])):
-            letters += str(self.alphabet[i])+"{"+str(self.mkvpathsmap['idx'][i])+"}"
-            weights += str(self.alphabet[i])+"="+str(self.mkvpathsmap['weight'][i])+"|"
-        weights=weights[:-1]
-        mkv = letters+":{"+weights+"}"
-        self.state['path']['order_args'] = mkv
-        # TODO: remove this hack.
-        self.state['path']['order_eng'] = MarkovGenerator(mkv)
-        self.__updateOrder('path',self.state['path']['order'])
-    
     def update(self,attribute,value):
         try:
             if attribute=="bpm":
@@ -172,35 +142,12 @@ class Generator(object):
                 self.__change_instrument(value)
             elif attribute=="path order":
                 self.__updateOrder('path',value)
-            elif attribute=='path list':
-                if value in self.state['path']['list']:
-                    #If the note is already in the path, it has to be removed.
-                    idx = self.state['path']['list'].index(value)
-                    del self.state['path']['list'][idx]
-                    del self.mkvpathsmap['idx'][idx]
-                    del self.mkvpathsmap['weight'][idx]
-                    self.__updateMarkovForPath()
-                else: 
-                    #Otherwise it has to be addded. If there are more than 8 notes, the first note in the list has to be removed as well.
-                    if len(self.state['path']['list'])>=8:
-                        del self.state['path']['list'][0]
-                        del self.mkvpathsmap['idx'][0]
-                        del self.mkvpathsmap['weight'][0]
-                    # Found means we found a slot to put the path on, which means there was
-                    # a "hole" somewhere in the path array.
-                    found = False 
-                    for i in range(len(self.mkvpathsmap['idx'])):
-                        if i not in self.mkvpathsmap['idx']:
-                            self.state['path']['list'].append(value)
-                            self.mkvpathsmap['idx'].append(i)
-                            self.mkvpathsmap['weight'].append(10) #TODO: Warning need to change when covering markov
-                            found = True
-                            break
-                    if not found:
-                        self.state['path']['list'].append(value)
-                        self.mkvpathsmap['idx'].append(len(self.mkvpathsmap['idx']))
-                        self.mkvpathsmap['weight'].append(10) #TODO: Warning need to change when covering markov
-                    self.__updateMarkovForPath()
+            elif attribute.startswith('path list'):
+                idx = int(attribute.split(" ")[-1])-1
+                selected_path = self.state['path']['selected']
+                self.state['path']['list'][selected_path] = value
+            elif attribute=='path select':
+                self.state['path']['selected'] = value
             elif attribute=="rhythm order":
                 self.__updateOrder('rhythm',value)
             elif attribute.startswith("rhythm list"):
@@ -229,9 +176,6 @@ class Generator(object):
             traceback.print_tb(tb)
             return False
     
-    def __updateList(self,attribute,value):
-        pass
-    
     def __updateOrder(self,attribute,value):
         self.state[attribute]['order'] = value
         size = len(self.state[attribute]['list'])
@@ -239,8 +183,10 @@ class Generator(object):
             self.state[attribute]['order_eng'] = CyclicGenerator(size)
         elif value=="uniformRandom":
             self.state[attribute]['order_eng'] = UniformRandomGenerator(size)
-        else: 
+        elif value=="markov": 
             self.state[attribute]['order_eng'] = MarkovGenerator(self.state[attribute]['order_args'])
+        else:
+            print "Unknown order: %s !" % value
     
     def __randomMarkovString(self,size):
         letters = ""
@@ -262,19 +208,11 @@ class Generator(object):
         duration = (float(mult) * 60.0) / (float(div) * float(self.state['bpm']))
         
         #Define note pitch from path. An "S" in the path can be used for silence.
-        #TODO : remove this hack
-        if len(self.mkvpathsmap['idx'])==0:
-            pitch = 'S'
-        else:
-            generator_idx = self.state['path']['order_eng'].next()
-            # TODO : remove this hack.
-            while generator_idx not in self.mkvpathsmap['idx']:
-                generator_idx = self.state['path']['order_eng'].next()
-            idx_of_path_in_list = self.mkvpathsmap['idx'].index(generator_idx)
-            pitch = self.state['path']['list'][idx_of_path_in_list]
+        pitch = self.state['path']['list'][self.state['path']['order_eng'].next()]
         
         if pitch=='S':
             pitch = 0
+            silent = True
         else:
             pitch = note.Note(pitch).midi
             #Alter note using field parameter
@@ -285,9 +223,13 @@ class Generator(object):
                 pitch = 0
             if pitch > 127:
                 pitch = 127
+            silent = False
         
-        #Assign velocity to instrument 
-        velocity = int(self.state['amplitude']['list'][self.state['amplitude']['order_eng'].next()] * 127) % 127
+        #Assign velocity to instrument
+        if silent:
+            velocity = 0
+        else:
+            velocity = int(self.state['amplitude']['list'][self.state['amplitude']['order_eng'].next()] * 127) % 127
         
         #Store in note buffer
         n = Note(pitch,duration,velocity)
@@ -303,9 +245,6 @@ class Generator(object):
         """ This method sets up initial MIDI instrument, panning, volume"""
         #Setup midi instrument
         self.__change_instrument(self.state['instrument'])
-        #Setup panning
-        
-        #Setup volume
         return
    
     # Main loop function

@@ -18,12 +18,6 @@ class MidiOut(object):
         self.tracks = {}
         
         self.__midiOut = rtmidi.MidiOut()
-        #if self.__midiOut.get_ports():
-        #    self.__midiOut.open_port(0)
-        #    msg = "MIDI output chosen : {}\n".format(self.__midiOut.get_ports()[0])
-        #else:
-        #    self.__midiOut.open_virtual_port("My virtual output")
-        #    msg = "MIDI output chosen : my virtual output\n"
         channel_name = config['midi_channel']
         self.__midiOut.open_virtual_port(channel_name)
         msg = "MIDI output chosen : %s\n" % channel_name

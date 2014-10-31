@@ -55,6 +55,7 @@ class TouchOSC(object):
         self.__orderDict = {1:"cyclic",2:"markov",3:"uniformRandom"}
         self.__reverseOrderDict = {v:k for k, v in self.__orderDict.items()}
         
+        # Notice that 1/12 is a special value (translates into the silent value).
         self.__pathDict = {
                            "C2":"/4/1","C#2":"/4/2","D2":"/4/3","D#2":"/4/4","E2":"/4/5","F2":"/4/6",
                            "F#2":"/4/7","G2":"/4/8","G#2":"/4/9","A2":"/4/10","A#2":"/4/11","B2":"/4/12",
@@ -63,7 +64,7 @@ class TouchOSC(object):
                            "C4":"/2/1","C#4":"/2/2","D4":"/2/3","D#4":"/2/4","E4":"/2/5","F4":"/2/6",
                            "F#4":"/2/7","G4":"/2/8","G#4":"/2/9","A4":"/2/10","A#4":"/2/11","B4":"/2/12",
                            "C5":"/1/1","C#5":"/1/2","D5":"/1/3","D#5":"/1/4","E5":"/1/5","F5":"/1/6",
-                           "F#5":"/1/7","G5":"/1/8","G#5":"/1/9","A5":"/1/10","A#5":"/1/11","B5":"/1/12"
+                           "F#5":"/1/7","G5":"/1/8","G#5":"/1/9","A5":"/1/10","A#5":"/1/11","S":"/1/12"
                            }
         self.__reversePathDict = {v:k for k, v in self.__pathDict.items()}
         self.__alphabetDict = {
@@ -72,10 +73,6 @@ class TouchOSC(object):
         self.__reverseAlphabetDict = {
                             "a":1,"b":2,"c":3,"d":4,"e":5,"f":6,"g":7,"h":8,"i":9,"j":10,"k":11,"l":12,"m":13,"n":14,"o":15,"p":16
                             }
-        
-        #Check registered callback (one per entry in the config file)
-        #         for addr in self.server.getOSCAddressSpace():
-        #             print addr
         
         #Queue for osc messages
         self.__messageQueue = Queue()
@@ -152,9 +149,13 @@ class TouchOSC(object):
                         default_addresses.append('/path/list/'+str(i+1)+"/"+str(j+1)+" 0")
                 for i in range(8):
                     default_addresses.append('/path/chosen%d %s' % (i+1,'?'))
+                selected_path = content['selected']
+                path = content['list'][selected_path]
+                # The path value mentioned here is a note string (e.g. 'C3')
+                state_addresses.append('/path/list'+ str(self.__pathDict[path])+" 1")
+                state_addresses.append('/path/select/1/%d 1' % (selected_path+1))
+                # Path chosen labels
                 for idx, path in enumerate(content['list']):
-                    # The path value mentioned here is a note string (e.g. 'C3')
-                    state_addresses.append('/path/list'+ str(self.__pathDict[path])+" 1")
                     state_addresses.append('/path/chosen'+ str(idx+1)+ ' '+ path)
                 # Path generator option
                 state_addresses.append('/path/generator/' +
@@ -304,6 +305,10 @@ class TouchOSC(object):
                             board_path = "/%s/%s" % (row, col) # Position on the path board
                             value = int(round(float(val[1:][:-1]))) # Value ( on or off)
                             self.update_path(board_path,value)
+                        elif addr.startswith('/path/select'):
+                            selected_path = int(addr.split("/")[-1])-1
+                            value = int(round(float(val[1:][:-1])))
+                            self.update_selected_path(selected_path, value)
                         elif addr.startswith('/rhythm/list'):
                             rhythm = self.__rhythmValue(float(val[1:][:-1]))
                             list_idx = int(addr.split("/")[-1])
@@ -384,34 +389,40 @@ class TouchOSC(object):
             pass
     
     def update_path(self,board_path,value):
+        # import pdb; pdb.set_trace()
         note = self.__reversePathDict[board_path]
         # TODO: This process is currently independent from the generator removal process.
         # This step should only happen as a consequence of a generator decision.
-        if not value==0.0:
-            self.__gui.update('path list', note)
-            if len(self.__generator.state['path']['list'])>=8:
-                note = self.__generator.state['path']['list'][0]
-                board_path = self.__pathDict[note]
-                addr = '/path/list%s' % board_path
-                self.send_message(addr,0.0)
+        if value > 0:
+            idx = self.__generator.state['path']['selected']
+            self.__gui.update('path list %d' % idx, note)
             # We display the chosen path value in the chosen list on the phone.
             try:
-                idx = self.__generator.state['path']['list'].index(note)
                 chosen = "chosen%d" % (idx+1)
                 self.send_message("/path/%s" % chosen, note)
             except ValueError:
                 print "Error : Note %s not found in path when updating path." % note
         else:
-            # Remove the element from the chosen list
-            # TODO: same problem as above.
-            try:
-                idx = self.__generator.state['path']['list'].index(note)
-                chosen = "chosen%d" % (idx+1)
-                self.send_message("/path/%s" % chosen, '?')
-            except ValueError:
-                print "Error : Note %s not found in path when updating path." % note
-            self.__gui.update('path list', note)
+            # Do nothing if this branch is hit
+            pass
     
+    def update_selected_path(self, selected_path, value):
+        """
+        Updates the selected path value and sets the board to be 
+        that of the selected path.
+        """
+        # print 'value : %d' % value
+        # import pdb; pdb.set_trace()
+        if value > 0:
+            self.__gui.update('path select', selected_path)
+            note = self.__generator.state['path']['list'][selected_path]
+            board_path = self.__pathDict[note]
+            addr = '/path/list%s' % board_path
+            self.send_message(addr,1.0)
+        else:
+            # Ignore the message. Nothing to do here.
+            pass
+
     def update_rhythm(self,rhythm,list_idx):
         self.__gui.update('rhythm list %d' % list_idx, rhythm)
         self.send_message('/rhythm/lr%d' % list_idx, rhythm)

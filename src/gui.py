@@ -2,6 +2,7 @@ import Tkinter
 import sys
 import traceback
 import OSC
+from OSC import OSCClientError
 import socket
 import subprocess
 
@@ -95,6 +96,7 @@ class GUI(object):
             traceback.print_exception(t,v,tb)
             self.__root.quit()
             quit()
+
     # TODO: find how to put this application in the foreground
     def raise_above_all(self,window):
         window.attributes('-topmost', 1)
@@ -152,15 +154,23 @@ class GUI(object):
        self.__generator.playing = False
        self.__generator.active = False
        #Close the osc thread by sending a quit osc message
-       c = OSC.OSCClient()
-       send_address = socket.gethostbyname(socket.gethostname()), self.applicationPort
-       c.connect(send_address)
-       msg = OSC.OSCMessage()
-       msg.setAddress('/quit')
-       c.send(msg)
-       c.close()
+       try:
+           c = OSC.OSCClient()
+           send_address = socket.gethostbyname(socket.gethostname()), self.applicationPort
+           c.connect(send_address)
+           msg = OSC.OSCMessage()
+           msg.setAddress('/quit')
+           c.send(msg)
+           c.close()
+       except OSCClientError as osc_e:
+           print 'Problem send quit message from gui : '
+           t,v,tb = sys.exc_info()
+           traceback.print_exception(t,v,tb)
+           self.__root.quit()
+           quit()
        print "Exiting... (generator no longer active)"
        self.__root.quit()
+       sys.exit(0)
     
     def connectCallback(self):
         self.deviceIP = self.deviceIPaddressVar.get()
@@ -180,6 +190,10 @@ class GUI(object):
         c.close()
     
     def update(self,attribute,value):
+        """
+        Updates GUI and generator.
+        """
+        #TODO : fix soon  The "if not value == ..." are comparing ints to strings!
         if attribute=='bpm':
             if not value==self.vars['bpm'].get():
                 if self.__generator.update(attribute,value):
@@ -192,10 +206,17 @@ class GUI(object):
             if not value== self.vars['path']['order'].get():
                 if self.__generator.update(attribute,value):
                     self.vars['path']['order'].set(value)
-        elif attribute=='path list':
-            if self.__generator.update(attribute,value):
-                self.vars['path']['list'].set(str(self.__generator.state['path']['list']))
-                self.vars['path']['order_args'].set(str(self.__generator.state['path']['order_args']))
+        elif attribute.startswith('path list'):
+            idx = int(attribute.split(" ")[-1])-1
+            if not value==self.__generator.state['path']['list'][idx]:
+                if self.__generator.update(attribute,value):
+                    self.vars['path']['list'].set(str(self.__generator.state['path']['list']))
+        elif attribute=='path select':
+            if not value==self.vars['path']['selected'].get():
+                if self.__generator.update(attribute,value):
+                    self.vars['path']['selected'].set(
+                        str(self.__generator.state['path']['selected'])
+                    )
         elif attribute=='rhythm order':
             if not value==self.vars['rhythm']['order'].get():
                 if self.__generator.update(attribute,value):
@@ -205,7 +226,9 @@ class GUI(object):
             # If value to update is not already equal to existing value.
             if not value==self.__generator.state['rhythm']['list'][idx]:
                 if self.__generator.update(attribute,value):
-                    self.vars['rhythm']['list'].set(str(self.__generator.state['rhythm']['list']))
+                    self.vars['rhythm']['list'].set(
+                        str(self.__generator.state['rhythm']['list'])
+                    )
         elif attribute.startswith('rhythm dividor'):
             if not value==self.vars['rhythm']['dividor'].get():
                 if self.__generator.update(attribute,value):
@@ -257,83 +280,143 @@ class GUI(object):
         Tkinter.Label(pane,text=str(type+" order type")).grid(row=t_row,column=0)
         self.vars[type]['order'] = Tkinter.StringVar()
         self.vars[type]['order'].set(self.__generator.state[type]['order'])
-        Tkinter.Entry(pane,textvariable=self.vars[type]['order'],state=Tkinter.DISABLED,width=50).grid(row=t_row,column=1)
+        Tkinter.Entry(
+            pane,
+            textvariable=self.vars[type]['order'],
+            state=Tkinter.DISABLED,width=50
+        ).grid(row=t_row,column=1)
         Tkinter.Label(pane,text=str(type+" order args")).grid(row=t_row+1,column=0)
         self.vars[type]['order_args'] = Tkinter.StringVar()
-        self.vars[type]['order_args'].set(self.__generator.state[type]['order_args'].split(":")[1])
-        Tkinter.Entry(pane,textvariable=self.vars[type]['order_args'],state=Tkinter.DISABLED,width=50).grid(row=t_row+1,column=1)
+        self.vars[type]['order_args'].set(
+            self.__generator.state[type]['order_args'].split(":")[1]
+        )
+        Tkinter.Entry(
+            pane,
+            textvariable=self.vars[type]['order_args'],
+            state=Tkinter.DISABLED,width=50
+        ).grid(row=t_row+1,column=1)
     
     def __createApplicationState(self,paned):
-        #Label the application  
+        # Label the application  
         panedLabel = Tkinter.Label(paned,text='iPhone Composer',font=("Helvetica", 24))
         paned.add(panedLabel)
         
-        #Internal pane
+        # Internal pane
         internal = Tkinter.PanedWindow(paned)
         paned.add(internal)
         
-        #Instrument
+        # Instrument
         Tkinter.Label(internal,text="Instrument").grid(row=0,column=0)
         self.vars['instrument'] = Tkinter.StringVar()
         self.vars['instrument'].set(self.__generator.state['instrument'])
-        Tkinter.Entry(internal,textvariable=self.vars['instrument'],state=Tkinter.DISABLED,width=50).grid(row=0,column=1)
+        Tkinter.Entry(
+            internal,
+            textvariable=self.vars['instrument'],
+            state=Tkinter.DISABLED,width=50
+        ).grid(row=0,column=1)
         
-        #bpm
+        # Bpm
         Tkinter.Label(internal,text="bpm").grid(row=1,column=0)
         self.vars['bpm'] = Tkinter.StringVar()
         self.vars['bpm'].set(str(self.__generator.state['bpm']))
-        Tkinter.Entry(internal,textvariable=self.vars['bpm'],state=Tkinter.DISABLED,width=50).grid(row=1,column=1)
+        Tkinter.Entry(
+            internal,
+            textvariable=self.vars['bpm'],
+            state=Tkinter.DISABLED,width=50
+        ).grid(row=1,column=1)
         Tkinter.Frame(height=5, bd=1, relief=Tkinter.SUNKEN).grid(row=2,column=0)
         
-        #path
+        # Path list 
         self.vars['path'] = {}
         Tkinter.Label(internal,text="path list").grid(row=3,column=0)
         self.vars['path']['list'] = Tkinter.StringVar()
         self.vars['path']['list'].set(str(self.__generator.state['path']['list']))
-        Tkinter.Entry(internal,textvariable=self.vars['path']['list'],state=Tkinter.DISABLED,width=50).grid(row=3,column=1)
-        self.__order(internal,"path",4)
-        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=6,column=0)
+        Tkinter.Entry(
+            internal,
+            textvariable=self.vars['path']['list'],
+            state=Tkinter.DISABLED,width=50
+        ).grid(row=3,column=1)
         
-        #rhythm
+        # Path selection
+        Tkinter.Label(internal, text="selected path").grid(row=4,column=0)
+        self.vars['path']['selected'] = Tkinter.StringVar()
+        self.vars['path']['selected'].set(str(self.__generator.state['path']['selected']))
+        Tkinter.Entry(
+            internal,
+            textvariable=self.vars['path']['selected'],
+            state=Tkinter.DISABLED,width=50
+        ).grid(row=4,column=1)
+
+        # Path order
+        self.__order(internal,"path",5)
+        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=7,column=0)
+        
+        # Rhythm list
         self.vars['rhythm'] = {}
-        Tkinter.Label(internal,text="rhythm list").grid(row=6,column=0)
+        Tkinter.Label(internal,text="rhythm list").grid(row=8,column=0)
         self.vars['rhythm']['list'] = Tkinter.StringVar()
         self.vars['rhythm']['list'].set(str(self.__generator.state['rhythm']['list']))
-        Tkinter.Entry(internal,textvariable=self.vars['rhythm']['list'],state=Tkinter.DISABLED,width=50).grid(row=6,column=1)
-        self.__order(internal,"rhythm",7)
-        Tkinter.Label(internal,text="rhythm dividor").grid(row=9,column=0)
+        Tkinter.Entry(
+            internal,
+            textvariable=self.vars['rhythm']['list'],
+            state=Tkinter.DISABLED,width=50
+        ).grid(row=8,column=1)
+        
+        # Rhythm order
+        self.__order(internal,"rhythm",9)
+        
+        # Rhythm dividor
+        Tkinter.Label(internal,text="rhythm dividor").grid(row=11,column=0)
         self.vars['rhythm']['dividor'] = Tkinter.StringVar()
         self.vars['rhythm']['dividor'].set(str(self.__generator.state['rhythm']['dividor']))
-        Tkinter.Entry(internal,textvariable=self.vars['rhythm']['dividor'],state=Tkinter.DISABLED,width=50).grid(row=9,column=1)
+        Tkinter.Entry(
+            internal,
+            textvariable=self.vars['rhythm']['dividor'],
+            state=Tkinter.DISABLED,width=50
+        ).grid(row=11,column=1)
         
-        #field
+        # Field list
         self.vars['field']={}
-        Tkinter.Label(internal,text="field list").grid(row=10,column=0)
+        Tkinter.Label(internal,text="field list").grid(row=12,column=0)
         self.vars['field']['list'] = Tkinter.StringVar()
         self.vars['field']['list'].set(str(self.__generator.state['field']['list']))
-        Tkinter.Entry(internal,textvariable=self.vars['field']['list'],state=Tkinter.DISABLED,width=50).grid(row=10,column=1)
-        self.__order(internal,"field",11)
-        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=13,column=0)
+        Tkinter.Entry(
+            internal,
+            textvariable=self.vars['field']['list'],
+            state=Tkinter.DISABLED,width=50
+        ).grid(row=12,column=1)
+
+        # Field order
+        self.__order(internal,"field",13)
+        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=15,column=0)
         
-        #amplitude
+        # Amplitude list
         self.vars['amplitude'] = {}
-        Tkinter.Label(internal,text="amplitude list").grid(row=18,column=0)
+        Tkinter.Label(internal,text="amplitude list").grid(row=16,column=0)
         self.vars['amplitude']['list'] = Tkinter.StringVar()
         self.vars['amplitude']['list'].set(str(self.__generator.state['amplitude']['list']))
-        Tkinter.Entry(internal,textvariable=self.vars['amplitude']['list'],state=Tkinter.DISABLED,width=50).grid(row=18,column=1)
-        self.__order(internal,"amplitude",19)
-        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=21,column=0)
+        Tkinter.Entry(
+            internal,
+            textvariable=self.vars['amplitude']['list'],
+            state=Tkinter.DISABLED,width=50
+        ).grid(row=16,column=1)
+
+        # Amplitude order
+        self.__order(internal,"amplitude",17)
+        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=19,column=0)
         
-        #panning
+        # Panning list
         self.vars['panning'] = {}
-        panningLabel = Tkinter.Label(internal,text="panning list").grid(row=22,column=0)
+        panningLabel = Tkinter.Label(internal,text="panning list").grid(row=20,column=0)
         self.vars['panning']['list'] = Tkinter.StringVar()
         self.vars['panning']['list'].set(str(self.__generator.state['panning']['list']))
-        Tkinter.Entry(internal,textvariable=self.vars['panning']['list'],state=Tkinter.DISABLED,width=50).grid(row=22,column=1)
-        self.__order(internal,"panning",23)
-        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=25,column=0)
+        Tkinter.Entry(
+            internal,
+            textvariable=self.vars['panning']['list'],
+            state=Tkinter.DISABLED,width=50
+        ).grid(row=20,column=1)
+        self.__order(internal,"panning",21)
+        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=23,column=0)
     
     def run(self):
-        #self.__root.after_idle(self.__root.call, 'wm', 'attributes', '.',
-        #                     '-topmost', False)
         self.__root.mainloop()
