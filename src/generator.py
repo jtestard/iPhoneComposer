@@ -302,15 +302,6 @@ class MarkovGenerator(RandomGenerator):
             self.__past.pop(0)
         return int(value)
 
-#!!! FIXME: The grammar generator is not working
-class GrammarGenerator(RandomGenerator):
-    def __init__(self,args):
-        self.__g = grammar.Grammar()
-        self.__g.load(args)
-    
-    def next(self):
-        return int(self.__g.next())
-
 if __name__ == '__main__':
     import doctest
     doctest.testmod()

@@ -19,6 +19,7 @@ Here is shown the layout of what the new interface would look like on an iPad.
 After right phase shift
 
 ![Rhythm Phased](./images/rhythm_phase_shifted.png =700x500)
+![midi bridge](./images/midiBridge.png)
 
 #### Pitch
 ![Pitch](./images/pitch.png =700x500)
