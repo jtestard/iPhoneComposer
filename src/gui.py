@@ -2,7 +2,6 @@ import Tkinter
 import sys
 import traceback
 import OSC
-from OSC import OSCClientError
 import socket
 import subprocess
 
@@ -151,26 +150,11 @@ class GUI(object):
         pass
     
     def exitCallback(self):
-       self.__generator.playing = False
-       self.__generator.active = False
-       #Close the osc thread by sending a quit osc message
-       try:
-           c = OSC.OSCClient()
-           send_address = socket.gethostbyname(socket.gethostname()), self.applicationPort
-           c.connect(send_address)
-           msg = OSC.OSCMessage()
-           msg.setAddress('/quit')
-           c.send(msg)
-           c.close()
-       except OSCClientError as osc_e:
-           print 'Problem send quit message from gui : '
-           t,v,tb = sys.exc_info()
-           traceback.print_exception(t,v,tb)
-           self.__root.quit()
-           quit()
-       print "Exiting... (generator no longer active)"
-       self.__root.quit()
-       sys.exit(0)
+        self.__generator.playing = False
+        self.__generator.active = False
+        self.__root.quit()
+        print "Exit was successful."
+        sys.exit(0)
     
     def connectCallback(self):
         self.deviceIP = self.deviceIPaddressVar.get()
@@ -273,7 +257,7 @@ class GUI(object):
         elif order_type=='uniformRandom':
             return 2
         else:
-            raise Exception("Order type %s is invalid!", order['type'])
+            raise Exception("Order type %s is invalid!", order_type)
             quit()
     
     def __order(self,pane,type,t_row):
@@ -407,7 +391,7 @@ class GUI(object):
         
         # Panning list
         self.vars['panning'] = {}
-        panningLabel = Tkinter.Label(internal,text="panning list").grid(row=20,column=0)
+        Tkinter.Label(internal,text="panning list").grid(row=20,column=0)
         self.vars['panning']['list'] = Tkinter.StringVar()
         self.vars['panning']['list'].set(str(self.__generator.state['panning']['list']))
         Tkinter.Entry(

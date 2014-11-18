@@ -1,4 +1,5 @@
 import gui
+import yappi
 import generator
 import midioutput
 import touchosc
@@ -6,7 +7,6 @@ import os
 import argparse
 import yaml
 
-from tkFileDialog   import askopenfilename
 from threading import Thread
 
 def generator_task(generator):
@@ -83,6 +83,7 @@ if __name__ == '__main__':
     osc_worker = Thread(target=osc_task,args=(osc,))
     
     # Start workers
+    yappi.start()
     generator_worker.daemon = True
     midiOut_worker.daemon = True
     osc_worker.daemon = True
@@ -92,8 +93,4 @@ if __name__ == '__main__':
     
     # Start GUI
     gui.run()
-    
-    # Prepare interrupt
-    generator_worker.join()
-    midiOut_worker.join()
-    pass
+    yappi.get_func_stats().print_all() 

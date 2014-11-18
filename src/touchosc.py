@@ -283,7 +283,7 @@ class TouchOSC(object):
             print "OSC server running on port 8000..."
             while True:
                 try:
-                    msg = self.__messageQueue.get()
+                    msg = str(self.__messageQueue.get())
                     if msg.strip()=='/quit []':
                         break
                     else:

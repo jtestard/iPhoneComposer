@@ -2,7 +2,6 @@ import time
 import rtmidi
 import generator
 from Queue import Empty
-import Tkinter
 
 class MidiOut(object):
     def __init__(self, gen, gui, config):
@@ -55,6 +54,8 @@ class MidiOut(object):
                             self.__gui.addToOutput(msg)
                             self.tracks[1]['instrument'] = note.type
                             self.__started = True
+                    else:
+                        print "Unknown object type"
                 except Empty:
                     time.sleep(.05)
                     pass

@@ -1,7 +1,7 @@
 # iPhoneComposer #
 ==============
 
-iPhone Composer Application for UCSD MUS276C Course and using in UCSD MUS267.
+iPhone Composer Application for UCSD MUS276C Course and using in UCSD MUS267. For a preview of what will be added in the next release, go [here](./preview.md).
 
 ## System Requirements ##
 The software has only been tested on Mac OS X. Support on Windows or Linux is not guaranteed.  The following software are assumed to be already installed properly:
