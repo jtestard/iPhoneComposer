@@ -8,22 +8,21 @@ Here is shown the layout of what the new interface would look like on an iPad.
 
 #### Instruments and Presets
 
-![Basic](./images/basic.png =700x500)
+![Basic](./images/basic.png)
 
 #### Path
-![Path](./images/path.png =700x500)
+![Path](./images/path.png)
 
 #### Rhythm
-![Rhythm](./images/rhythm.png =700x500)
+![Rhythm](./images/rhythm.png)
 
 After right phase shift
 
-![Rhythm Phased](./images/rhythm_phase_shifted.png =700x500)
-![midi bridge](./images/midiBridge.png)
+![Rhythm Phased](./images/rhythm_phase_shifted.png)
 
 #### Pitch
-![Pitch](./images/pitch.png =700x500)
+![Pitch](./images/pitch.png)
 
 #### Amplitude
-![Amplitude](./images/amplitude.png =700x500)
+![Amplitude](./images/amplitude.png)
  
