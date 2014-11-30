@@ -32,20 +32,39 @@ class MidiOut(object):
     def __del__(self):
         del self.__midiOut
     
+    def exit_notes(self):
+        """
+        Sends a note off events to all currently playing notes.
+        Used when exiting or pausing the application.
+        """
+        for note_off in self.note_offs:
+            self.__midiOut.send_message(note_off)
+    
     def run(self):
+        """
+        """
+        self.note_offs = []
         while self.__generator.active:
             while self.__generator.playing:
                 try:
                     note = self.__generator.queue.get()
-                    if isinstance(note,generator.Note):
-                        self.__generator.size -= 1
-                        note_on = [0x90,note.pitch,note.velocity]
-                        note_off = [0x80,note.pitch,0]
-                        msg = "{}\n".format(vars(note))
-                        self.__gui.addToOutput(msg)
-                        self.__midiOut.send_message(note_on)
+                    self.__generator.decrementQueueSize()
+                    if isinstance(note,list):
+                        # We received a list of notes
+                        # Must change to note-off followed by note-on.
+                        for element in note:
+                            note_on = [0x90,element.pitch,element.velocity]
+                            self.note_offs.append([0x80,element.pitch,0])
+                            msg = "{}\n".format(vars(element))
+                            self.__gui.addToOutput(msg)
+                            self.__midiOut.send_message(note_on)
+                        time.sleep(note[0].duration)
+                        for note_off in self.note_offs:
+                            self.__midiOut.send_message(note_off)
+                        self.__note_offs = []
+                    elif isinstance(note, generator.NoteOffset):
+                        # This is a pattern offset. We wait a little bit
                         time.sleep(note.duration)
-                        self.__midiOut.send_message(note_off)
                     elif isinstance(note,generator.Instrument):
                         if not note.type==self.tracks[1]['instrument'] or not self.__started:
                             program_change = [0xC0,note.type,0x00]
@@ -59,6 +78,10 @@ class MidiOut(object):
                 except Empty:
                     time.sleep(.05)
                     pass
+                finally:
+                    # Don't forget to stop notes if application terminates.
+                    self.exit_notes()
+
         return
     #Queue required in the future for better precision and multi pitches
 

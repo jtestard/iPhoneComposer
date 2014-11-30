@@ -2,27 +2,31 @@ instrument: 23
 bpm : 110
 rhythm :
   dividor : 4
-  list : [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
-  order : 
-    type : cyclic
-    args : a{0}b{1}c{2}d{3}e{4}if{5}g{6}h{7}:{a=2|b=15|c=6|d=1|e=3|f=1|g=3}
-path: #List of pitches should be specified in Music21 format (tone,flat/normal,octave) with no commas, all caps. Example : C-4, D#3 
-  list: ['C3','C3','S','C3','S','C3','S','C3']
-  order : 
-    type : cyclic 
-    args : None
-field:
-  list: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-  order: 
-    type: cyclic #markov
-    args : None 
+  pattern : [
+    [0,0,0,0,1,0,0,0],
+    [1,0,0,1,0,1,0,1],
+    [1,0,0,0,1,0,0,0],
+    [1,0,0,1,0,1,0,1]
+  ]
+  order : cyclic
+path: 
+  pattern: ['C3', 'C4', 'S', 'C3', 'S', 'C4', 'C3', 'S']
+  order : cyclic 
+pitch:
+  pattern: [
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+    [0,1,0,1,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+    [1,1,1,1,1,1,1,1],
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+    [0,1,0,1,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0]
+  ] 
+  order: cyclic
 amplitude:
-  list : [0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5]
-  order:
-    type: cyclic
-    args: None
-panning :
-  list : [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-  order:
-    type: cyclic
-    args: None
+  pattern : [0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5]
+  order: cyclic

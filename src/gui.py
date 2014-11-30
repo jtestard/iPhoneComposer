@@ -3,6 +3,8 @@ import sys
 import traceback
 import OSC
 import socket
+from OSC import OSCClientError
+import tkMessageBox
 import subprocess
 
 class GUI(object):
@@ -12,8 +14,7 @@ class GUI(object):
         self.deviceIP = ''
         self.devicePort = 0
         self.applicationPort = 0
-
-        self.config = config
+        self.config = config 
         
         self.__generator = gen
         try:
@@ -34,19 +35,13 @@ class GUI(object):
             # Delete Window callback
             self.__root.protocol("WM_DELETE_WINDOW", self.exitCallback)
             self.__window = self.__root
-            
-            self.vars = {}
-            
-            #Add a Paned Window to contain application state information
-            paned = Tkinter.PanedWindow(self.__window,orient=Tkinter.VERTICAL)
-            self.__createApplicationState(paned)
-            paned.grid(row=1,column=0)
+            self.__root.wm_title("iPhoneComposer");
             
             #Add an output list that may be accessed publicly
-            mainframe = Tkinter.Frame(self.__window, bd=2, relief=Tkinter.SUNKEN,width=500,height=600)
+            mainframe = Tkinter.Frame(self.__window, bd=2, relief=Tkinter.SUNKEN,width=500,height=400)
             
             #Output frame
-            outputframe = Tkinter.Frame(mainframe,relief=Tkinter.SUNKEN,width=500,height=300)
+            outputframe = Tkinter.Frame(mainframe,relief=Tkinter.SUNKEN,width=500,height=200)
             self.outputscrollbar = Tkinter.Scrollbar(outputframe)
             self.outputscrollbar.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
             Tkinter.Label(outputframe,text="Output").pack(side=Tkinter.TOP)
@@ -58,7 +53,7 @@ class GUI(object):
             outputframe.pack(fill=None, expand=False)
             
             #OSC frame
-            oscframe = Tkinter.Frame(mainframe,relief=Tkinter.SUNKEN,width=500,height=300)
+            oscframe = Tkinter.Frame(mainframe,relief=Tkinter.SUNKEN,width=500,height=200)
             self.oscScrollbar = Tkinter.Scrollbar(oscframe)
             self.oscScrollbar.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
             Tkinter.Label(oscframe,text="OSC").pack(side=Tkinter.TOP)
@@ -70,7 +65,7 @@ class GUI(object):
             oscframe.pack(fill=None, expand=False)
             
             mainframe.pack_propagate(0)
-            mainframe.grid(row=1,column=1)
+            mainframe.grid(row=1,column=0)
             
             #Create the buttons
             buttonPane = Tkinter.PanedWindow(self.__window,orient=Tkinter.VERTICAL)
@@ -80,23 +75,21 @@ class GUI(object):
             
             #Create the connection fields
             connectPane = Tkinter.PanedWindow(self.__window,orient=Tkinter.VERTICAL)
-            connectPane.grid(row=2,column=1)
+            connectPane.grid(row=3,column=0)
             self.__createConnect(connectPane)
-            
-            #Dictionaries
-            self.__orderValue = {'cyclic':0,'markov':1,'uniformRandom':2}
-            self.__invertOrderValue = {0:'cyclic',1:'markov',2:'uniformRandom'}
-
-            command = '''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' '''
-            subprocess.call(command,shell=True)
             
         except :
             t,v,tb = sys.exc_info()
             traceback.print_exception(t,v,tb)
             self.__root.quit()
             quit()
-
-    # TODO: find how to put this application in the foreground
+    
+    def set_midi_output(self, midi_output):
+        self.__midi_output = midi_output
+        
+    def set_touch_osc(self, touch_osc):
+        self.__touch_osc = touch_osc
+    
     def raise_above_all(self,window):
         window.attributes('-topmost', 1)
         window.attributes('-topmost', 0)
@@ -150,6 +143,7 @@ class GUI(object):
         pass
     
     def exitCallback(self):
+        self.__midi_output.exit_notes()
         self.__generator.playing = False
         self.__generator.active = False
         self.__root.quit()
@@ -157,250 +151,28 @@ class GUI(object):
         sys.exit(0)
     
     def connectCallback(self):
-        self.deviceIP = self.deviceIPaddressVar.get()
-        # TODO: Add checks for non integer input
-        self.devicePort = int(self.devicePortVar.get())
-        self.applicationPort = int(self.applicationPortVar.get())
-        c = OSC.OSCClient()
-        send_address = socket.gethostbyname(socket.gethostname()), self.applicationPort
-        c.connect(send_address)
-        msg = OSC.OSCMessage()
-        msg.setAddress('/connect')
-        # This information is to update the OSC module
-        msg.append(self.deviceIP) # data[0]
-        msg.append(self.devicePort) # data[1]
-        msg.append(self.applicationPort) # data[2]
-        c.send(msg)
-        c.close()
-    
-    def update(self,attribute,value):
-        """
-        Updates GUI and generator.
-        """
-        #TODO : fix soon  The "if not value == ..." are comparing ints to strings!
-        if attribute=='bpm':
-            if not value==self.vars['bpm'].get():
-                if self.__generator.update(attribute,value):
-                    self.vars['bpm'].set(value)
-        elif attribute=='instrument':
-            if not value==self.vars['instrument'].get():
-                if self.__generator.update(attribute,value):
-                    self.vars['instrument'].set(value)
-        elif attribute=='path order':
-            if not value== self.vars['path']['order'].get():
-                if self.__generator.update(attribute,value):
-                    self.vars['path']['order'].set(value)
-        elif attribute.startswith('path list'):
-            idx = int(attribute.split(" ")[-1])-1
-            if not value==self.__generator.state['path']['list'][idx]:
-                if self.__generator.update(attribute,value):
-                    self.vars['path']['list'].set(str(self.__generator.state['path']['list']))
-        elif attribute=='path select':
-            if not value==self.vars['path']['selected'].get():
-                if self.__generator.update(attribute,value):
-                    self.vars['path']['selected'].set(
-                        str(self.__generator.state['path']['selected'])
-                    )
-        elif attribute=='rhythm order':
-            if not value==self.vars['rhythm']['order'].get():
-                if self.__generator.update(attribute,value):
-                    self.vars['rhythm']['order'].set(value)
-        elif attribute.startswith('rhythm list'):
-            idx = int(attribute.split(" ")[-1])-1
-            # If value to update is not already equal to existing value.
-            if not value==self.__generator.state['rhythm']['list'][idx]:
-                if self.__generator.update(attribute,value):
-                    self.vars['rhythm']['list'].set(
-                        str(self.__generator.state['rhythm']['list'])
-                    )
-        elif attribute.startswith('rhythm dividor'):
-            if not value==self.vars['rhythm']['dividor'].get():
-                if self.__generator.update(attribute,value):
-                    self.vars['rhythm']['dividor'].set(value)
-        elif attribute.startswith('field list'):
-            # If value to update is not already equal to existing value.
-            idx = int(attribute.split(" ")[-1])-1
-            if not value==self.__generator.state['field']['list'][idx]:
-                if self.__generator.update(attribute,value):
-                    self.vars['field']['list'].set(self.__generator.state['field']['list'])
-        elif attribute=='field order':
-            if not value==self.vars['field']['order'].get():
-                if self.__generator.update(attribute,value):
-                    self.vars['field']['order'].set(value)
-        elif attribute.startswith('amplitude list'):
-            idx = int(attribute.split(" ")[-1])-1
-            # If value to update is not already equal to existing value.
-            if not value==self.__generator.state['amplitude']['list'][idx]:
-                if self.__generator.update(attribute,value):
-                    self.vars['amplitude']['list'].set(
-                        self.__generator.state['amplitude']['list']
-                    )
-        elif attribute=='amplitude order':
-            if not value==self.vars['amplitude']['order'].get():
-                if self.__generator.update(attribute,value):
-                    self.vars['amplitude']['order'].set(value)
-        else:
-            #not recognized
-            pass
-    
+        print "Connecting..."
+        try:
+            self.devicePort = int(self.devicePortVar.get())
+            self.applicationPort = int(self.applicationPortVar.get())
+            self.deviceIP = self.deviceIPaddressVar.get()
+            self.__touch_osc.connect(self.deviceIP, self.devicePort, self.applicationPort)
+        except ValueError:
+            tkMessageBox.showinfo(
+                "Incorrect IP/Port Combination", 
+                "Please check that the IP/Port combination you entered is correct"
+            )
+        except OSCClientError:
+            tkMessageBox.showinfo(
+                "Unable to connect to the device", 
+                "Please check that the IP/Port combination you entered is correct"
+            ) 
+        
     def playCallback(self):
         self.__generator.playing = True
     
     def pauseCallback(self):
         self.__generator.playing = False
-    
-    def __orderValue(self,order_type):
-        if order_type=='cyclic':
-            return 0
-        elif order_type=='markov':
-            return 1
-        elif order_type=='uniformRandom':
-            return 2
-        else:
-            raise Exception("Order type %s is invalid!", order_type)
-            quit()
-    
-    def __order(self,pane,type,t_row):
-        Tkinter.Label(pane,text=str(type+" order type")).grid(row=t_row,column=0)
-        self.vars[type]['order'] = Tkinter.StringVar()
-        self.vars[type]['order'].set(self.__generator.state[type]['order'])
-        Tkinter.Entry(
-            pane,
-            textvariable=self.vars[type]['order'],
-            state=Tkinter.DISABLED,width=50
-        ).grid(row=t_row,column=1)
-        Tkinter.Label(pane,text=str(type+" order args")).grid(row=t_row+1,column=0)
-        self.vars[type]['order_args'] = Tkinter.StringVar()
-        self.vars[type]['order_args'].set(
-            self.__generator.state[type]['order_args'].split(":")[1]
-        )
-        Tkinter.Entry(
-            pane,
-            textvariable=self.vars[type]['order_args'],
-            state=Tkinter.DISABLED,width=50
-        ).grid(row=t_row+1,column=1)
-    
-    def __createApplicationState(self,paned):
-        # Label the application  
-        panedLabel = Tkinter.Label(paned,text='iPhone Composer',font=("Helvetica", 24))
-        paned.add(panedLabel)
-        
-        # Internal pane
-        internal = Tkinter.PanedWindow(paned)
-        paned.add(internal)
-        
-        # Instrument
-        Tkinter.Label(internal,text="Instrument").grid(row=0,column=0)
-        self.vars['instrument'] = Tkinter.StringVar()
-        self.vars['instrument'].set(self.__generator.state['instrument'])
-        Tkinter.Entry(
-            internal,
-            textvariable=self.vars['instrument'],
-            state=Tkinter.DISABLED,width=50
-        ).grid(row=0,column=1)
-        
-        # Bpm
-        Tkinter.Label(internal,text="bpm").grid(row=1,column=0)
-        self.vars['bpm'] = Tkinter.StringVar()
-        self.vars['bpm'].set(str(self.__generator.state['bpm']))
-        Tkinter.Entry(
-            internal,
-            textvariable=self.vars['bpm'],
-            state=Tkinter.DISABLED,width=50
-        ).grid(row=1,column=1)
-        Tkinter.Frame(height=5, bd=1, relief=Tkinter.SUNKEN).grid(row=2,column=0)
-        
-        # Path list 
-        self.vars['path'] = {}
-        Tkinter.Label(internal,text="path list").grid(row=3,column=0)
-        self.vars['path']['list'] = Tkinter.StringVar()
-        self.vars['path']['list'].set(str(self.__generator.state['path']['list']))
-        Tkinter.Entry(
-            internal,
-            textvariable=self.vars['path']['list'],
-            state=Tkinter.DISABLED,width=50
-        ).grid(row=3,column=1)
-        
-        # Path selection
-        Tkinter.Label(internal, text="selected path").grid(row=4,column=0)
-        self.vars['path']['selected'] = Tkinter.StringVar()
-        self.vars['path']['selected'].set(str(self.__generator.state['path']['selected']))
-        Tkinter.Entry(
-            internal,
-            textvariable=self.vars['path']['selected'],
-            state=Tkinter.DISABLED,width=50
-        ).grid(row=4,column=1)
-
-        # Path order
-        self.__order(internal,"path",5)
-        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=7,column=0)
-        
-        # Rhythm list
-        self.vars['rhythm'] = {}
-        Tkinter.Label(internal,text="rhythm list").grid(row=8,column=0)
-        self.vars['rhythm']['list'] = Tkinter.StringVar()
-        self.vars['rhythm']['list'].set(str(self.__generator.state['rhythm']['list']))
-        Tkinter.Entry(
-            internal,
-            textvariable=self.vars['rhythm']['list'],
-            state=Tkinter.DISABLED,width=50
-        ).grid(row=8,column=1)
-        
-        # Rhythm order
-        self.__order(internal,"rhythm",9)
-        
-        # Rhythm dividor
-        Tkinter.Label(internal,text="rhythm dividor").grid(row=11,column=0)
-        self.vars['rhythm']['dividor'] = Tkinter.StringVar()
-        self.vars['rhythm']['dividor'].set(str(self.__generator.state['rhythm']['dividor']))
-        Tkinter.Entry(
-            internal,
-            textvariable=self.vars['rhythm']['dividor'],
-            state=Tkinter.DISABLED,width=50
-        ).grid(row=11,column=1)
-        
-        # Field list
-        self.vars['field']={}
-        Tkinter.Label(internal,text="field list").grid(row=12,column=0)
-        self.vars['field']['list'] = Tkinter.StringVar()
-        self.vars['field']['list'].set(str(self.__generator.state['field']['list']))
-        Tkinter.Entry(
-            internal,
-            textvariable=self.vars['field']['list'],
-            state=Tkinter.DISABLED,width=50
-        ).grid(row=12,column=1)
-
-        # Field order
-        self.__order(internal,"field",13)
-        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=15,column=0)
-        
-        # Amplitude list
-        self.vars['amplitude'] = {}
-        Tkinter.Label(internal,text="amplitude list").grid(row=16,column=0)
-        self.vars['amplitude']['list'] = Tkinter.StringVar()
-        self.vars['amplitude']['list'].set(str(self.__generator.state['amplitude']['list']))
-        Tkinter.Entry(
-            internal,
-            textvariable=self.vars['amplitude']['list'],
-            state=Tkinter.DISABLED,width=50
-        ).grid(row=16,column=1)
-
-        # Amplitude order
-        self.__order(internal,"amplitude",17)
-        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=19,column=0)
-        
-        # Panning list
-        self.vars['panning'] = {}
-        Tkinter.Label(internal,text="panning list").grid(row=20,column=0)
-        self.vars['panning']['list'] = Tkinter.StringVar()
-        self.vars['panning']['list'].set(str(self.__generator.state['panning']['list']))
-        Tkinter.Entry(
-            internal,
-            textvariable=self.vars['panning']['list'],
-            state=Tkinter.DISABLED,width=50
-        ).grid(row=20,column=1)
-        self.__order(internal,"panning",21)
-        Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN).grid(row=23,column=0)
     
     def run(self):
         self.__root.mainloop()

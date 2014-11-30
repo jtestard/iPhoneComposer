@@ -47,8 +47,6 @@ class TouchOSC(object):
         
         #Set additional handlers
         self.server.addMsgHandler('/quit',self.printing_handler)
-        self.server.addMsgHandler('/connect',self.connect_handler)
-        self.server.addMsgHandler('/basic/reset',self.reset_handler)
         self.server.daemon = True
         
         #Used for transfer of OSC messages:
@@ -96,33 +94,31 @@ class TouchOSC(object):
             self.__gui.osc.insert(Tkinter.END,str(t)+":"+str(v))
 
     
-    def connect_handler(self,addr, tags, data, source):
+    def connect(self,deviceIP, devicePort, applicationPort):
         """
-        Connects to the phone client and calls send_state
+        Connects to the phone client and calls send_state. Used when click connect on the
+        GUI. Raises OSCClientError.
         """
-        try:
-            print "connecting"
-            self.deviceIP = data[0]
-            self.devicePort = data[1]
-            self.applicationPort = data[2]
-            self.__gui.addToOSC(
-                    "Device IP: %s, device port : %d, application port : %d" % (
-                        self.deviceIP,
-                        self.devicePort,
-                        self.applicationPort
-                    )
-            )
-            address = self.deviceIP, self.devicePort
-            # TODO: currently will not update application port correctly.
-            # self.update_application_server()
-            self.ip_port = "%s:%d" % (self.deviceIP, self.devicePort)
-            self.client.connect(address)
-            self.send_state()
-        except:
-            t,v,tb = sys.exc_info()
-            print str(t)
-            print str(v)
-            traceback.print_tb(tb)
+        self.deviceIP = deviceIP
+        self.devicePort = devicePort
+        self.applicationPort = applicationPort
+        address = self.deviceIP, self.devicePort
+        # TODO: currently will not update application port correctly.
+        # self.update_application_server()
+        self.ip_port = "%s:%d" % (self.deviceIP, self.devicePort)
+        self.client.connect(address)
+        self.__gui.addToOSC(
+                "Device IP: %s, device port : %d, application port : %d" % (
+                    self.deviceIP,
+                    self.devicePort,
+                    self.applicationPort
+                )
+        )
+        self.send_state()
+        self.__gui.addToOSC(
+                "State sent successfully to device"
+        )
+
     
     def send_state(self):
         """

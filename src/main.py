@@ -1,5 +1,4 @@
 import gui
-import yappi
 import generator
 import midioutput
 import touchosc
@@ -72,8 +71,10 @@ if __name__ == '__main__':
     gui = gui.GUI(gen, config)
     print "GUI setup complete"
     midiout = midioutput.MidiOut(gen, gui, config)
+    gui.set_midi_output(midiout)
     print "MidiOut setup complete"
     osc = touchosc.TouchOSC(gen, gui, oscmap_filename, config)
+    gui.set_touch_osc(osc)
     print "OSC setup complete"
     
     # Building workers
@@ -83,7 +84,6 @@ if __name__ == '__main__':
     osc_worker = Thread(target=osc_task,args=(osc,))
     
     # Start workers
-    yappi.start()
     generator_worker.daemon = True
     midiOut_worker.daemon = True
     osc_worker.daemon = True
@@ -93,4 +93,3 @@ if __name__ == '__main__':
     
     # Start GUI
     gui.run()
-    yappi.get_func_stats().print_all() 
