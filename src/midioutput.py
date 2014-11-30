@@ -45,17 +45,18 @@ class MidiOut(object):
         """
         self.note_offs = []
         while self.__generator.active:
+            time.sleep(.05)
             while self.__generator.playing:
                 try:
                     note = self.__generator.queue.get()
-                    self.__generator.decrementQueueSize()
+                    size = self.__generator.decrementQueueSize()
                     if isinstance(note,list):
                         # We received a list of notes
                         # Must change to note-off followed by note-on.
                         for element in note:
                             note_on = [0x90,element.pitch,element.velocity]
                             self.note_offs.append([0x80,element.pitch,0])
-                            msg = "{}\n".format(vars(element))
+                            msg = "%d : %s\n" % (size, ("{}".format(vars(element))))
                             self.__gui.addToOutput(msg)
                             self.__midiOut.send_message(note_on)
                         time.sleep(note[0].duration)

@@ -165,15 +165,15 @@ class Generator(object):
             "* order" : str
             "path select" : int
             "path pattern" : int
-            "rhythm pattern %d" : list
-            "pitch pattern %d" : list
+            "rhythm pattern %d" : (row) list
+            "pitch pattern %d" : (column) list
             "amplitude pattern %d" : float
         """
         try:
             if attribute == "bpm":
                 self.state['bpm'] = value
             elif attribute == "instrument":
-                self.state['instrument'] = value
+                self.state['instrument'] = value + 1
                 self.__change_instrument(value)
             elif attribute == "path order":
                 self.__updateOrder('path', value)
@@ -185,17 +185,34 @@ class Generator(object):
             elif attribute == "rhythm order":
                 self.__updateOrder('rhythm', value)
             elif attribute.startswith("rhythm pattern"):
-                idx = int(attribute.split(" ")[-1]) - 1
-                self.state['rhythm']['pattern'][idx] = value
+                idx = int(attribute.split(" ")[-1])
+                cur = 0
+                while cur < 8 and value[cur] == 0:
+                    cur += 1
+                offset = cur
+                values = []
+                while cur < 8:
+                    cur += 1
+                    val = cur - 1
+                    while cur < 8 and value[cur] == 0:
+                        cur += 1
+                    values.append(cur - val)
+                self.state['rhythm']['pattern'][idx] = (offset, values)
             elif attribute.startswith("rhythm dividor"):
                 self.state['rhythm']['dividor'] = value
             elif attribute.startswith("pitch pattern"):
-                idx = int(attribute.split(" ")[-1]) - 1
-                self.state['pitch']['pattern'][idx] = value
+                idx = int(attribute.split(" ")[-1])
+                pitch_column = []
+                for i in xrange(11):
+                    if value[i] == 1:
+                        pitch_column.append(5-i)
+                if not pitch_column:
+                    pitch_column.append(0)
+                self.state['pitch']['pattern'][idx] = pitch_column
             elif attribute.startswith("pitch order"):
                 self.__updateOrder('pitch', value)
             elif attribute.startswith('amplitude pattern'):
-                idx = int(attribute.split(" ")[-1]) - 1
+                idx = int(attribute.split(" ")[-1])
                 self.state['amplitude']['pattern'][idx] = value
             elif attribute.startswith("amplitude order"):
                 self.__updateOrder('amplitude', value)
@@ -212,7 +229,7 @@ class Generator(object):
     
     def __updateOrder(self, attribute, value):
         self.state[attribute]['order'] = value
-        size = len(self.state[attribute]['list'])
+        size = self.feature_sizes[attribute]
         if value == "cyclic":
             self.state[attribute]['order_eng'] = CyclicGenerator(size)
         elif value == "random":
@@ -288,7 +305,7 @@ class Generator(object):
         >>> g = Generator("../resources/presets/default.yml", {})
         >>> pattern = g.deserialize_pitch(g.state['pitch']['pattern'])
         >>> g.serialize_pitch(pattern)
-        [[0], [3, 0, -3], [0], [3, 0, -3], [0], [0], [0], [0]]
+        [[0], [3, 0, -3], [0], [3, 0, -3], [0], [0], [3, 0, -3], [0]]
         """
         new_pattern = [[] for x in xrange(0,8)]
         for i in xrange(11):
@@ -337,21 +354,22 @@ class Generator(object):
             # Store in note buffer
             n = NoteOffset(duration)
             self.queue.put(n)
+            self.incrementQueueSize()
             
         elif 0 <= col_idx and col_idx < len(rhythm_pattern[row_idx][Generator.VALUES]):
             # Dealing with pattern values
             
             mult = rhythm_pattern[row_idx][Generator.VALUES][col_idx]
+            self.state['rhythm']['col_idx'] += 1 
             
-            if col_idx == len(rhythm_pattern[row_idx][Generator.VALUES]) - 1:
+            if self.state['rhythm']['col_idx'] == len(rhythm_pattern[row_idx][Generator.VALUES]):
                 # If the column index points to the last value of pattern,
                 # We need to choose the next row to be played. The duration
                 # offset of that row must be added to the current multiplier
                 # as well.
                 self.state['rhythm']['row_idx'] = self.state['rhythm']['order_eng'].next()
                 self.state['rhythm']['col_idx'] = -1
-                row_idx = self.state['rhythm']['row_idx']
-                mult += rhythm_pattern[row_idx][Generator.OFFSET]
+                mult += rhythm_pattern[self.state['rhythm']['row_idx']][Generator.OFFSET]
             
             # Define note duration from rhythm and bpm
             div = self.state['rhythm']['dividor']
@@ -363,6 +381,7 @@ class Generator(object):
             if path == 'S':
                 # Add a single silent note.
                 self.queue.put([Note(0, duration, 0)])
+                self.incrementQueueSize()
             else:
                 # Assign velocity to instrument
                 velocity = int(self.state['amplitude']['pattern'][self.state['amplitude']['order_eng'].next()] * 127) % 127
@@ -380,22 +399,28 @@ class Generator(object):
                 # Store in note queue
                 self.queue.put(notes)
                 self.incrementQueueSize()
+                
         else:
             raise Exception("Invalid column index for rhythm pattern!") 
     
     def incrementQueueSize(self):
         self.size_lock.acquire()
         self.size += 1  # Should be using queue size instead.
+        size = self.size
         self.size_lock.release()
+        return size
         
     def decrementQueueSize(self):
         self.size_lock.acquire()
         self.size -= 1  # Should be using queue size instead.
+        size = self.size
         self.size_lock.release()
+        return size
     
     def __change_instrument(self, instrument):
         i = Instrument(instrument)
         self.queue.put(i)
+        self.incrementQueueSize()
     
     def __setupBuffer(self):
         """ This method sets up initial MIDI instrument, panning, volume"""
@@ -410,11 +435,13 @@ class Generator(object):
             time.sleep(.1)
             while self.playing:
                 time.sleep(.1)
-                if self.size < 5:
-                    while self.size < 10:
+                if self.size < 2:
+                    while self.size < 5:
                         self.generate()
 
+
 class Note(object):
+    
     def __init__(self, p, d, v):
         self.pitch = p
         self.duration = d
@@ -423,42 +450,59 @@ class Note(object):
     def __repr__(self):
         return "Note(%d,%f,%d)" % (self.pitch, self.duration, self.velocity)
 
+
 class NoteOffset(object):
+    
     def __init__(self, d):
         self.duration = d
     
     def __repr__(self):
         return "NoteOffset(%f)" % self.duration
+
         
 class Instrument(object):
+    
     def __init__(self, instrument):
         self.type = instrument
 
+
 class RandomGenerator(object):
+    
     def next(self):
         """ Generates a random value using the generator."""
         return
 
+
 class CyclicGenerator(RandomGenerator):
+    
     def __init__(self, size):
         self.__counter = 0
         self.__size = size
+        
     def next(self):
         self.__counter = (self.__counter + 1) % self.__size
         return self.__counter
+    
+    def __repr__(self):
+        return "CyclicGenerator"
+
 
 class UniformRandomGenerator(RandomGenerator):
+    
     def __init__(self, size):
         self.__size = size
     
     def next(self):
         return random.randint(0, self.__size - 1)
+    
+    def __repr__(self):
+        return "UniformRandomGenerator"
 
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
     g = Generator("../resources/presets/default.yml", {})
-    i = 10
+    i = 40
     for j in xrange(i):
         g.generate()
     for j in xrange(i):

@@ -1,56 +1,24 @@
-""" receiving OSC with pyOSC
-https://trac.v2.nl/wiki/pyOSC
-example by www.ixi-audio.net based on pyOSC documentation
-
-this is a very basic example, for detailed info on pyOSC functionality check the OSC.py file 
-or run pydoc pyOSC.py. you can also get the docs by opening a python shell and doing
->>> import OSC
->>> help(OSC)
-"""
 import OSC
 import sys
 import time, threading
 import socket
-import generator
+from generator import Generator
 import yaml
 import Tkinter
 import traceback
 from pprint import pprint
 from Queue import Queue,Empty
 from numbers import Number
+from _sqlite3 import Row
 
 class TouchOSC(object):
     
-    def __init__(self,gen,gui,filename,config):
+    def __init__(self,gen,gui=None,filename=None,config=None):
 
-        self.__generator = gen
-        self.__gui = gui
-        self.devicePort = config['device_port']
-        self.applicationPort = config['application_port']
-        
-        # Creates a OSC server and client
-        self.update_application_server() 
-
-        # this registers a 'default' handler (for unmatched messages), 
-        # an /'error' handler, an '/info' handler.
-        # And, if the client supports it, a '/subscribe' & '/unsubscribe' handler
-        self.server.addDefaultHandlers()
-        
-        #Read in the oscmap
-        with open(filename) as f:
-            self.oscmap = yaml.load(f)
-        for touchosctab in self.oscmap:
-            self.server.addMsgHandler("/"+str(touchosctab),self.printing_handler)
-            for touchoscop in self.oscmap[touchosctab]:
-                oscaddr = "/"+str(touchosctab)+"/"+touchoscop
-                self.server.addMsgHandler(oscaddr,self.printing_handler)
-        
-        #Set additional handlers
-        self.server.addMsgHandler('/quit',self.printing_handler)
-        self.server.daemon = True
+        self.generator = gen
         
         #Used for transfer of OSC messages:
-        self.__orderDict = {1:"cyclic",2:"markov",3:"uniformRandom"}
+        self.__orderDict = {1:"cyclic",2:"random"}
         self.__reverseOrderDict = {v:k for k, v in self.__orderDict.items()}
         
         # Notice that 1/12 is a special value (translates into the silent value).
@@ -72,6 +40,39 @@ class TouchOSC(object):
                             "a":1,"b":2,"c":3,"d":4,"e":5,"f":6,"g":7,"h":8,"i":9,"j":10,"k":11,"l":12,"m":13,"n":14,"o":15,"p":16
                             }
         
+        if not (gui and filename and config):
+            return
+        
+        self.__gui = gui
+        self.devicePort = config['device_port']
+        self.applicationPort = config['application_port']
+        
+        # Creates a OSC server and client
+        self.update_application_server()
+        
+        if not hasattr(self, 'server'):
+            # Required for what comes next.
+            raise Exception('Server not initialized!')
+            sys.exit(1)
+
+        # this registers a 'default' handler (for unmatched messages), 
+        # an /'error' handler, an '/info' handler.
+        # And, if the client supports it, a '/subscribe' & '/unsubscribe' handler
+        self.server.addDefaultHandlers()
+        
+        #Read in the oscmap
+        with open(filename) as f:
+            self.oscmap = yaml.load(f)
+        for touchosctab in self.oscmap:
+            self.server.addMsgHandler("/"+str(touchosctab),self.printing_handler)
+            for touchoscop in self.oscmap[touchosctab]:
+                oscaddr = "/"+str(touchosctab)+"/"+touchoscop
+                self.server.addMsgHandler(oscaddr,self.printing_handler)
+    
+            #Set additional handlers
+            self.server.addMsgHandler('/quit',self.printing_handler)
+            self.server.daemon = True
+        
         #Queue for osc messages
         self.__messageQueue = Queue()
     
@@ -85,13 +86,18 @@ class TouchOSC(object):
         if hasattr(self, 'client'):
             self.client.close()
         # Create OSC server and client
-        receive_address = socket.gethostbyname(socket.gethostname()), self.applicationPort        
+        
+        # This line has been causing some problems recently, not sure why. 
+        # receive_address = socket.gethostbyname(socket.gethostname()), self.applicationPort
+        # Quick workaround
+        receive_address = '0.0.0.0', self.applicationPort
         try:
             self.server = OSC.ThreadingOSCServer(receive_address)
             self.client = OSC.OSCClient()
         except:
             t,v,tb = sys.exc_info()
-            self.__gui.osc.insert(Tkinter.END,str(t)+":"+str(v))
+            print v
+            traceback.print_tb(tb)
 
     
     def connect(self,deviceIP, devicePort, applicationPort):
@@ -108,7 +114,7 @@ class TouchOSC(object):
         self.ip_port = "%s:%d" % (self.deviceIP, self.devicePort)
         self.client.connect(address)
         self.__gui.addToOSC(
-                "Device IP: %s, device port : %d, application port : %d" % (
+                "Device IP: %s, device port : %d, application port : %d\n" % (
                     self.deviceIP,
                     self.devicePort,
                     self.applicationPort
@@ -116,7 +122,7 @@ class TouchOSC(object):
         )
         self.send_state()
         self.__gui.addToOSC(
-                "State sent successfully to device"
+                "State sent successfully to device!"
         )
 
     
@@ -127,13 +133,16 @@ class TouchOSC(object):
         state_addresses = [] # Values specified in the state 
         default_addresses = [] # Values required for display but not mentioned in state
         print "============= State being sent ... ==============="
-        pprint(self.__generator.state)
-        for attribute in self.__generator.state:
-            content = self.__generator.state[attribute]
+        pprint(self.generator.state)
+        for attribute in self.generator.state:
+            content = self.generator.state[attribute]
             if attribute=='instrument':
-                # Instrument value and label
-                state_addresses.append('/basic/instrument '+str(content))
-                state_addresses.append('/basic/instrumentValue '+str(content))
+                for i in xrange(4):
+                    for j in xrange(8):
+                        default_addresses.append('/basic/instrument/%d/%d 0' %  (i+1,j+1))
+                row = 4 - ((content - 1) / 8)
+                col = content % 8
+                state_addresses.append('/basic/instrument/%d/%d 1' % (row,col))
             elif attribute=='bpm':
                 # BPM value and label
                 state_addresses.append('/basic/bpm '+str(content))
@@ -142,31 +151,30 @@ class TouchOSC(object):
                 # Path board default values
                 for i in range(4):
                     for j in range(12):
-                        default_addresses.append('/path/list/'+str(i+1)+"/"+str(j+1)+" 0")
+                        default_addresses.append('/path/pattern/'+str(i+1)+"/"+str(j+1)+" 0")
                 for i in range(8):
                     default_addresses.append('/path/chosen%d %s' % (i+1,'?'))
                 selected_path = content['selected']
-                path = content['list'][selected_path]
+                path = content['pattern'][selected_path]
                 # The path value mentioned here is a note string (e.g. 'C3')
-                state_addresses.append('/path/list'+ str(self.__pathDict[path])+" 1")
+                state_addresses.append('/path/pattern'+ str(self.__pathDict[path])+" 1")
                 state_addresses.append('/path/select/1/%d 1' % (selected_path+1))
                 # Path chosen labels
-                for idx, path in enumerate(content['list']):
+                for idx, path in enumerate(content['pattern']):
                     state_addresses.append('/path/chosen'+ str(idx+1)+ ' '+ path)
                 # Path generator option
                 state_addresses.append('/path/generator/' +
                         str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
-                # TODO: Put the send instructions for the path markov state here.
             elif attribute=='rhythm':
-                # Default rhythm patterns
-                for i in range(16):
-                    default_addresses.append('/rhythm/list/'+str(i+1)+" 0")
-                    default_addresses.append('/rhythm/lr'+str(i+1)+" 0")
-                # State specified rhythm patterns
-                for i,r in enumerate(content['list']):
-                    state_addresses.append('/rhythm/list/'+str(i+1)+" "+str(r))
-                    state_addresses.append('/rhythm/lr'+str(i+1)+" "+str(r))
+                # Rhythm pattern
+                external_pattern = self.generator.deserialize_rhythm(content['pattern'])
+                for i in xrange(4):
+                    for j in xrange(8):
+                        if external_pattern[i][j] == 0:
+                            default_addresses.append("/rhythm/pattern/%d/%d 0" % (4-i,j+1));
+                        else:
+                            state_addresses.append("/rhythm/pattern/%d/%d 1" % (4-i,j+1))
                 # Rhythm dividor value and label
                 state_addresses.append('/rhythm/dividor ' + str(self.__reverseDividorValue(content['dividor'])))
                 state_addresses.append('/rhythm/dividorValue ' + str(content['dividor']))
@@ -174,42 +182,29 @@ class TouchOSC(object):
                 state_addresses.append('/rhythm/generator/' +
                         str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
-            # TODO: State is defined using the "field" keyword while the interface uses "pitch".
-            # A single naming should be used.
-            elif attribute=='field':
-                # Default pitch pattern
-                for i in range(16):
-                    default_addresses.append('/pitch/list/'+str(i+1)+" 0")
-                    default_addresses.append('/pitch/lp'+str(i+1)+" 0")
-                for i,p in enumerate(content['list']):
-                    state_addresses.append('/pitch/list/'+ str(i+1)+ " "+ str(p))
-                    state_addresses.append('/pitch/lp'+ str(i+1)+ " "+ str(p))
+            elif attribute=='pitch':
+                # Pitch pattern
+                external_pattern = self.generator.deserialize_pitch(content['pattern'])
+                for i in xrange(11):
+                    for j in xrange(8):
+                        if external_pattern[i][j] == 0:
+                            default_addresses.append("/pitch/pattern/%d/%d 0" % (11-i,j+1))
+                        else:
+                            state_addresses.append("/pitch/pattern/%d/%d 1" % (11-i,j+1))
                 # Pitch generator option
                 state_addresses.append('/pitch/generator/' +
                         str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
             elif attribute=='amplitude':
                 # Default amplitude pattern
-                for i in range(16):
-                    default_addresses.append('/amplitude/list/'+str(i+1)+" 0")
+                for i in range(8):
+                    default_addresses.append('/amplitude/pattern/'+str(i+1)+" 0")
                     default_addresses.append('/amplitude/l'+str(i+1)+" 0")
-                for i,p in enumerate(content['list']):
-                    state_addresses.append('/amplitude/list/'+ str(i+1)+ " "+ str(p))
+                for i,p in enumerate(content['pattern']):
+                    state_addresses.append('/amplitude/pattern/'+ str(i+1)+ " "+ str(p))
                     state_addresses.append('/amplitude/l'+ str(i+1)+ " "+ str(p))
                 # Amplitude generator option
                 state_addresses.append('/amplitude/generator/' +
-                        str(self.__reverseOrderDict[content['order']])+"/1 1"
-                )
-            elif attribute=='panning':
-                # Default panning pattern
-                for i in range(16):
-                    default_addresses.append('/panning/list/'+str(i+1)+" 0")
-                    default_addresses.append('/panning/l'+str(i+1)+" 0")
-                for i,p in enumerate(content['list']):
-                    state_addresses.append('/panning/list/'+ str(i+1)+ " "+ str(p))
-                    state_addresses.append('/panning/l'+ str(i+1)+ " "+ str(p))
-                # Panning generator option
-                state_addresses.append('/panning/generator/' +
                         str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
             else:
@@ -223,10 +218,6 @@ class TouchOSC(object):
         for packet in state_addresses:
             addr,value = packet.split(" ")
             self.send_message(addr,value)
-    
-    def __send_markov(self,markov_args):
-        
-        pass
     
     #Rounding value for rhythm dividor
     def __dividorValue(self,r):
@@ -250,154 +241,192 @@ class TouchOSC(object):
         else:
             return .85 
     
-    #Rounding value for rhythm
-    def __rhythmValue(self,r):
-        if r < .8:
-            return 0
-        elif r < 1.6:
-            return 1
-        elif r < 2.4:
-            return 2
-        elif r < 3.2:
-            return 3
-        else:
-            return 4
-    
-    def __order(self,val):
-        if val < .67:
-            return 0
-        elif val < 1.34:
-            return 1
-        else:
-            return 2
-    
     # OSC updates
     def run(self):
         try:
             st = threading.Thread( target = self.server.serve_forever )
             st.start()
             print "OSC server running on port 8000..."
-            while True:
-                try:
-                    msg = str(self.__messageQueue.get())
-                    if msg.strip()=='/quit []':
-                        break
-                    else:
-                        addr,val = msg.strip().split(" ")
-                        print "Address : %s, Value : %s" % (addr, val)
-                        if addr=='/basic/bpm':
-                            bpm = int(round(float(val[1:][:-1])))
-                            self.update_bpm(bpm)
-                        elif addr=='/basic/instrument':
-                            instrument = int(round(float(val[1:][:-1])))
-                            self.update_instrument(instrument)
-                        elif addr.startswith('/path/generator'):
-                            gen_number = addr.split("/")[-2]
-                            gen_type = self.__orderDict[int(gen_number)]
-                            value = int(round(float(val[1:][:-1])))
-                            self.update_generator('path', gen_type,value)
-                        elif addr.startswith('/path/list'):
-                            row, col = tuple(addr.split("/")[-2:])
-                            board_path = "/%s/%s" % (row, col) # Position on the path board
-                            value = int(round(float(val[1:][:-1]))) # Value ( on or off)
-                            self.update_path(board_path,value)
-                        elif addr.startswith('/path/select'):
-                            selected_path = int(addr.split("/")[-1])-1
-                            value = int(round(float(val[1:][:-1])))
-                            self.update_selected_path(selected_path, value)
-                        elif addr.startswith('/rhythm/list'):
-                            rhythm = self.__rhythmValue(float(val[1:][:-1]))
-                            list_idx = int(addr.split("/")[-1])
-                            self.update_rhythm(rhythm,list_idx)
-                        elif addr.startswith('/rhythm/generator'):
-                            gen_number = addr.split("/")[-2]
-                            gen_type = self.__orderDict[int(gen_number)]
-                            value = int(round(float(val[1:][:-1])))
-                            self.update_generator('rhythm', gen_type, value)
-                        elif addr.startswith('/rhythm/dividor'):
-                            dividor = self.__dividorValue(float(val[1:][:-1]))
-                            self.update_dividor(dividor)
-                        elif addr.startswith('/pitch/generator'):
-                            gen_number = addr.split("/")[-2]
-                            gen_type = self.__orderDict[int(gen_number)]
-                            value = int(round(float(val[1:][:-1])))
-                            self.update_generator('pitch', gen_type, value)
-                        elif addr.startswith('/pitch/list'):
-                            pitch = int(round(float(val[1:][:-1]))) 
-                            list_idx = int(addr.split("/")[-1])
-                            self.update_pitch(pitch,list_idx)
-                        elif addr.startswith('/amplitude/list'):
-                            amplitude = float(val[1:][:-1])
-                            list_idx = int(addr.split("/")[-1])
-                            self.update_amplitude(amplitude,list_idx)
-                        else:
-                            pass
-                    self.__gui.addToOSC(msg)
-                except Empty:
-                    time.sleep(.05)
-                    pass
-                except:
-                    t,v,tb = sys.exc_info()
-                    print t
-                    print v
-                    traceback.print_tb(tb)
-            self.timed_out= True
-            self.server.close()
-            self.client.close()
-            st.join()
         except:
             t2,v2,tb2 = sys.exc_info()
             print t2
             print v2
             traceback.print_tb(tb2)
+        
+        while self.generator.active:
+            try:
+                msg = str(self.__messageQueue.get())
+                if msg.strip()=='/quit []':
+                    break
+                else:
+                    addr,val = msg.strip().split(" ")
+                    print "Address : %s, Value : %s" % (addr, val)
+                    if addr.startswith('/basic/bpm'):
+                        bpm = int(round(float(val[1:][:-1])))
+                        self.update_bpm(bpm)
+                    elif addr.startswith('/basic/instrument'):
+                        value = int(round(float(val[1:][:-1])))
+                        row, col = tuple(addr.split("/")[-2:])
+                        row = int(row); col = int(col)
+                        row = 4 - row
+                        col = col - 1
+                        self.update_instrument(row, col, value)
+                    elif addr.startswith('/path/generator'):
+                        gen_number = addr.split("/")[-2]
+                        gen_type = self.__orderDict[int(gen_number)]
+                        value = int(round(float(val[1:][:-1])))
+                        self.update_generator('path', gen_type,value)
+                    elif addr.startswith('/path/pattern'):
+                        row, col = tuple(addr.split("/")[-2:])
+                        pattern_path = "/%s/%s" % (row, col) # Position on the path board
+                        value = int(round(float(val[1:][:-1]))) # Value ( on or off)
+                        self.update_path(pattern_path,value)
+                    elif addr.startswith('/path/select'):
+                        selected_path = int(addr.split("/")[-1])-1
+                        value = int(round(float(val[1:][:-1])))
+                        self.update_selected_path(selected_path, value)
+                    elif addr.startswith('/rhythm/pattern'):
+                        row, col = tuple(addr.split("/")[-2:])
+                        row = int(row); col = int(col)
+                        row = 4 - row
+                        col = col - 1
+                        value = int(round(float(val[1:][:-1]))) # Value ( on or off)
+                        self.update_rhythm(row, col, value)
+                    elif addr.startswith('/rhythm/generator'):
+                        gen_number = addr.split("/")[-2]
+                        gen_type = self.__orderDict[int(gen_number)]
+                        value = int(round(float(val[1:][:-1])))
+                        self.update_generator('rhythm', gen_type, value)
+                    elif addr.startswith('/rhythm/dividor'):
+                        dividor = self.__dividorValue(float(val[1:][:-1]))
+                        self.update_dividor(dividor)
+                    elif addr.startswith('/pitch/generator'):
+                        gen_number = addr.split("/")[-2]
+                        gen_type = self.__orderDict[int(gen_number)]
+                        value = int(round(float(val[1:][:-1])))
+                        self.update_generator('pitch', gen_type, value)
+                    elif addr.startswith('/pitch/pattern'):
+                        row, col = tuple(addr.split("/")[-2:])
+                        row = int(row); col = int(col)
+                        row = 11 - row
+                        col = col - 1
+                        value = int(round(float(val[1:][:-1]))) # Value ( on or off)
+                        self.update_pitch(row, col, value)
+                    elif addr.startswith('/amplitude/generator'):
+                        gen_number = addr.split("/")[-2]
+                        gen_type = self.__orderDict[int(gen_number)]
+                        value = int(round(float(val[1:][:-1])))
+                        self.update_generator('amplitude', gen_type, value)
+                    elif addr.startswith('/amplitude/pattern'):
+                        amplitude = float(val[1:][:-1])
+                        list_idx = int(addr.split("/")[-1]) - 1
+                        self.update_amplitude(amplitude,list_idx)
+                    else:
+                        pass
+                self.__gui.addToOSC(msg)
+            except Empty:
+                time.sleep(.05)
+                pass
+            except:
+                t,v,tb = sys.exc_info()
+                print t
+                print v
+                traceback.print_tb(tb)
+        self.timed_out= True
+        self.server.close()
+        self.client.close()
+        st.join()
+
     
     def send_message(self,address,value):
-        print "Address: %s \t\t Message:%s" % (address, str(value))
+        """
+        Sends a message to the device. Assumes the 
+        client attribute has been set.
+        """
+        print "Address: %s \t\t Message: %s" % (address, str(value))
         msg = OSC.OSCMessage()
         msg.setAddress(address)
         msg.append(value)
         self.client.send(msg)
 
-    def update_instrument(self,instrument):
-        self.__gui.update('instrument', instrument)
-        self.send_message('/basic/instrumentValue', instrument)
+    def update_instrument(self, row, col, value):
+        """
+        Updates the generator instrument if value is
+        not 0. Does this by matching (row, col) to
+        an instrument number between 1 and 32.
+        Sends acknowledgement message to device.
+        
+        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> osc = TouchOSC(g)
+        >>> osc.update_instrument(0,2,1)
+        >>> osc.generator.state['instrument']
+        3
+        """
+        if value != 0:
+            instrument = row * 8 + col
+            self.generator.update('instrument', instrument)
+            if hasattr(self, 'client'):
+                self.send_message('/basic/instrument/%d/%d' % (4-row, col+1), 1)
 
     def update_bpm(self,bpm):
-        self.__gui.update('bpm', bpm)
-        self.send_message('/basic/bpmValue', bpm)
+        """
+        Updates bpm.
+        Sends acknowledgement message to device.
+        
+        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> osc = TouchOSC(g)
+        >>> osc.update_bpm(90)
+        >>> osc.generator.state['bpm']
+        90
+        """
+        self.generator.update('bpm', bpm)
+        if hasattr(self, 'client'):
+            self.send_message('/basic/bpmValue', bpm)
 
     def update_generator(self,category, gen_type, value):
-        if value > 0:
-            if category=='path':
-                self.__gui.update('path order', gen_type)
-            elif category=='rhythm':
-                self.__gui.update('rhythm order', gen_type)
-            elif category=='pitch':
-                self.__gui.update('field order', gen_type)
-            elif category=='amplitude':
-                self.__gui.update('amplitude order', gen_type)
-            elif category=='panning':
-                self.__gui.update('panning order', gen_type)
+        """
+        Updates generator for category.
+        gen_type may be 'cyclic' or 'random'.
+        Only updates if value different from 0.
+        
+        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> osc = TouchOSC(g)
+        >>> osc.update_generator('path','random',1)
+        >>> osc.update_generator('rhythm','cyclic',1)
+        >>> osc.generator.state['path']['order_eng']
+        UniformRandomGenerator
+        >>> osc.generator.state['rhythm']['order_eng']
+        CyclicGenerator
+        """
+        if value != 0:
+            if category in ['path','amplitude','rhythm','pitch']:
+                self.generator.update("%s order" % category, gen_type)
             else:
                 print "Error : unexpected generator category!"
         else:
             # Ignore calls to the generator with value 0.
             pass
     
-    def update_path(self,board_path,value):
-        # import pdb; pdb.set_trace()
-        note = self.__reversePathDict[board_path]
-        # TODO: This process is currently independent from the generator removal process.
-        # This step should only happen as a consequence of a generator decision.
+    def update_path(self,pattern_path,value):
+        """
+        Updates path corresponding to current selection if value greater than 0.
+        Sends acknowledgement message to device.
+        
+        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> osc = TouchOSC(g)
+        >>> osc.update_path('/4/1',1)
+        >>> selected = osc.generator.state['path']['selected']
+        >>> osc.generator.state['path']['pattern'][selected]
+        'C2'
+        """
         if value > 0:
-            idx = self.__generator.state['path']['selected']
-            self.__gui.update('path list %d' % idx, note)
+            note = self.__reversePathDict[pattern_path]
+            idx = self.generator.state['path']['selected']
+            self.generator.update('path pattern %d' % idx, note)
             # We display the chosen path value in the chosen list on the phone.
-            try:
-                chosen = "chosen%d" % (idx+1)
+            chosen = "chosen%d" % (idx+1)
+            if hasattr(self, 'client'):
                 self.send_message("/path/%s" % chosen, note)
-            except ValueError:
-                print "Error : Note %s not found in path when updating path." % note
         else:
             # Do nothing if this branch is hit
             pass
@@ -406,39 +435,99 @@ class TouchOSC(object):
         """
         Updates the selected path value and sets the board to be 
         that of the selected path.
+        Sends acknowledgement message to device.
+        
+        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> osc = TouchOSC(g)
+        >>> osc.update_selected_path(0,1)
+        >>> osc.generator.state['path']['selected']
+        0
         """
-        # print 'value : %d' % value
-        # import pdb; pdb.set_trace()
         if value > 0:
-            self.__gui.update('path select', selected_path)
-            note = self.__generator.state['path']['list'][selected_path]
-            board_path = self.__pathDict[note]
-            addr = '/path/list%s' % board_path
-            self.send_message(addr,1.0)
+            self.generator.update('path select', selected_path)
+            if hasattr(self, 'client'):
+                note = self.generator.state['path']['pattern'][selected_path]
+                pattern_path = self.__pathDict[note]
+                addr = '/path/pattern%s' % pattern_path
+                self.send_message(addr,1.0)
         else:
             # Ignore the message. Nothing to do here.
             pass
 
-    def update_rhythm(self,rhythm,list_idx):
-        self.__gui.update('rhythm list %d' % list_idx, rhythm)
-        self.send_message('/rhythm/lr%d' % list_idx, rhythm)
+    def update_rhythm(self, row, col, value):
+        """
+        Updates path pattern one row at a time if value is greater than 0.
+        
+        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> osc = TouchOSC(g)
+        >>> osc.update_rhythm(0,1,1)
+        >>> external_pattern = osc.generator.deserialize_rhythm(osc.generator.state['rhythm']['pattern'])
+        >>> external_pattern[0]
+        [1, 1, 0, 0, 1, 0, 0, 0]
+        """
+        external_pattern = self.generator.deserialize_rhythm(self.generator.state['rhythm']['pattern']) 
+        full_row = external_pattern[row]
+        full_row[col] = value
+        self.generator.update('rhythm pattern %d' % row, full_row)
     
     def update_dividor(self,dividor):
-        self.__gui.update('rhythm dividor', dividor)
-        self.send_message('/rhythm/dividorValue', dividor)
+        """
+        Update rhythm dividor.
+        Sends acknowledgement message to device.
+        
+        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> osc = TouchOSC(g)
+        >>> osc.update_dividor(2)
+        >>> osc.generator.state['rhythm']['dividor']
+        2
+        """
+        self.generator.update('rhythm dividor', dividor)
+        if hasattr(self, 'client'):
+            self.send_message('/rhythm/dividorValue', dividor)
  
-    def update_pitch(self,pitch,list_idx):
-        self.__gui.update('field list %d' % list_idx, pitch)
-        self.send_message('/pitch/lp%d' % list_idx, pitch)
+    def update_pitch(self, row, col, value):
+        """
+        Updates pitch pattern one column at a time if value is greater than 0.
+        Sends acknowledgement message to device.
+        
+        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> osc = TouchOSC(g)
+        >>> osc.update_pitch(0,0,1)
+        >>> external_pattern = osc.generator.deserialize_pitch(osc.generator.state['pitch']['pattern'])
+        >>> external_pattern[0]
+        [1, 0, 0, 0, 0, 0, 0, 0]
+        """
+        column = []
+        external_pattern = self.generator.deserialize_pitch(self.generator.state['pitch']['pattern'])
+        for r in external_pattern:
+            column.append(r[col])
+        column[row] = value
+        self.generator.update('pitch pattern %d' % col, column)
+        
+        if hasattr(self, 'client'):
+            if 1 not in column:
+                # If all atoms are removed from a column, an atom on row 0 is added (in state as well).
+                self.send_message('/pitch/pattern/6/%d' % col, 1)
 
     def update_amplitude(self,amplitude,list_idx):
-        self.__gui.update('amplitude list %d' % list_idx, amplitude)
-        self.send_message('/amplitude/l%d' % list_idx, amplitude)
+        """
+        Updates amplitude at list_idx with value amplitude.
+        Sends acknowledgement message to device.
+        
+        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> osc = TouchOSC(g)
+        >>> osc.update_amplitude(0.7, 0)
+        >>> osc.generator.state['amplitude']['pattern'][0]
+        0.7
+        """
+        self.generator.update('amplitude pattern %d' % list_idx, amplitude)
+        if hasattr(self, 'client'):
+            self.send_message('/amplitude/l%d' % (list_idx + 1), amplitude)
 
     def reset_handler(self,addr, tags, data, source):
         try:
             if data[0]==1.0: #if reset is toggled 
-                self.__generator.loadState()
+                self.generator.loadState()
                 self.send_state()
         except:
             print sys.exc_info()
@@ -450,3 +539,7 @@ class TouchOSC(object):
             self.__messageQueue.put(msg)
         except:
             print sys.exc_info()
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
