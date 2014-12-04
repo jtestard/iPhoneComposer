@@ -1,11 +1,17 @@
 import Tkinter
+from Tkinter import Menu, Tk, Scrollbar, Frame, PanedWindow, Button, Label, Entry
+from Tkinter import Text, SUNKEN, VERTICAL, HORIZONTAL, LEFT, RIGHT, Y, X, TOP
+from Tkinter import StringVar, END, FALSE
 import sys
 import traceback
 import OSC
+from generator import RandomGenerator
 import socket
+from json import dumps
 from OSC import OSCClientError
 import tkMessageBox
 import subprocess
+import simplejson as json
 
 class GUI(object):
     
@@ -18,7 +24,7 @@ class GUI(object):
         
         self.__generator = gen
         try:
-            self.__root=Tkinter.Tk()
+            self.__root=Tk()
             screen_w = self.__root.winfo_screenwidth()
             screen_h = self.__root.winfo_screenheight()
             window_w = self.config['window_width']
@@ -36,28 +42,36 @@ class GUI(object):
             self.__root.protocol("WM_DELETE_WINDOW", self.exitCallback)
             self.__window = self.__root
             self.__root.wm_title("iPhoneComposer");
+            self.__root.option_add('*tearOff', FALSE)
             
-            #Add an output list that may be accessed publicly
-            mainframe = Tkinter.Frame(self.__window, bd=2, relief=Tkinter.SUNKEN,width=500,height=400)
+            # Create menu
+            menubar = Menu(self.__root)
+            self.__root.config(menu=menubar)
+            optionsMenu = Menu(menubar)
+            menubar.add_cascade(label="Options",menu=optionsMenu) 
+            optionsMenu.add_command(label="Show internal state", command=self.showInternalState)
             
-            #Output frame
-            outputframe = Tkinter.Frame(mainframe,relief=Tkinter.SUNKEN,width=500,height=200)
-            self.outputscrollbar = Tkinter.Scrollbar(outputframe)
-            self.outputscrollbar.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
-            Tkinter.Label(outputframe,text="Output").pack(side=Tkinter.TOP)
-            self.output = Tkinter.Text(outputframe, bd=0, yscrollcommand=self.outputscrollbar.set)
+            # Add an output list that may be accessed publicly
+            mainframe = Frame(self.__window, bd=2, relief=SUNKEN,width=500,height=400)
+            
+            # Output frame
+            outputframe = Frame(mainframe,relief=SUNKEN,width=500,height=200)
+            self.outputscrollbar = Scrollbar(outputframe)
+            self.outputscrollbar.pack(side=RIGHT, fill=Y)
+            Label(outputframe,text="Output").pack(side=TOP)
+            self.output = Text(outputframe, bd=0, yscrollcommand=self.outputscrollbar.set)
             self.output.pack(pady=(10,10),padx=(10,10))
             self.output.configure(yscrollcommand = self.outputscrollbar.set)
             self.outputscrollbar.configure(command = self.output.yview)
             outputframe.pack_propagate(0)
             outputframe.pack(fill=None, expand=False)
             
-            #OSC frame
-            oscframe = Tkinter.Frame(mainframe,relief=Tkinter.SUNKEN,width=500,height=200)
-            self.oscScrollbar = Tkinter.Scrollbar(oscframe)
-            self.oscScrollbar.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
-            Tkinter.Label(oscframe,text="OSC").pack(side=Tkinter.TOP)
-            self.osc = Tkinter.Text(oscframe, bd=0, yscrollcommand=self.oscScrollbar.set)
+            # OSC frame
+            oscframe = Frame(mainframe,relief=SUNKEN,width=500,height=200)
+            self.oscScrollbar = Scrollbar(oscframe)
+            self.oscScrollbar.pack(side=RIGHT, fill=Y)
+            Label(oscframe,text="OSC").pack(side=TOP)
+            self.osc = Text(oscframe, bd=0, yscrollcommand=self.oscScrollbar.set)
             self.osc.pack(pady=(10,10),padx=(10,10))
             self.osc.configure(yscrollcommand = self.oscScrollbar.set)
             self.oscScrollbar.configure(command = self.osc.yview)
@@ -67,16 +81,16 @@ class GUI(object):
             mainframe.pack_propagate(0)
             mainframe.grid(row=1,column=0)
             
-            #Create the buttons
-            buttonPane = Tkinter.PanedWindow(self.__window,orient=Tkinter.VERTICAL)
+            # Create the buttons
+            buttonPane = PanedWindow(self.__window,orient=VERTICAL)
             buttonPane.grid(row=2,column=0)
             self.__createButtons(buttonPane)
             buttonPane.pack_propagate(0)
             
-            #Create the connection fields
-            connectPane = Tkinter.PanedWindow(self.__window,orient=Tkinter.VERTICAL)
+            # Create the connection fields
+            connectPane = PanedWindow(self.__window,orient=VERTICAL)
             connectPane.grid(row=3,column=0)
-            self.__createConnect(connectPane)
+            self.__createConnect(connectPane)   
             
         except :
             t,v,tb = sys.exc_info()
@@ -93,53 +107,76 @@ class GUI(object):
     def raise_above_all(self,window):
         window.attributes('-topmost', 1)
         window.attributes('-topmost', 0)
+    
+    def showInternalState(self):
+        state = self.__generator.state
+        internal_state = "Instrument : %d\n" % state['instrument']
+        internal_state += "BPM : %d\n" % state['bpm']
+        internal_state += "Path Pattern : %s\n" % state['path']['pattern']
+        internal_state += "Path Generator : %s\n" % state['path']['order']
+        rhythm_pattern = self.__generator.deserialize_rhythm(state['rhythm']['pattern'])
+        internal_state += "Rhythm Pattern :\n"
+        for pat in rhythm_pattern:
+             internal_state += "%s\n" % pat
+        internal_state += "Rhythm Generator : %s\n" % state['rhythm']['order']
+        internal_state += "Pitch Pattern :\n"
+        pitch_pattern = self.__generator.deserialize_pitch(state['pitch']['pattern'])
+        for pat in pitch_pattern:
+             internal_state += "%s\n" % pat
+        internal_state += "Pitch Generator : %s\n" % state['pitch']['order']
+        internal_state += "Amplitude Pattern : %s\n" % state['amplitude']['pattern']
+        internal_state += "Amplitude Generator : %s" % state['amplitude']['order']
+        tkMessageBox.showinfo(
+            "Application Internal State",
+            internal_state
+        )
 
     def addToOutput(self,msg):
-        self.output.insert(Tkinter.END,msg)
-        self.output.yview(Tkinter.END)
+        self.output.insert(END,msg)
+        self.output.yview(END)
         
     def addToOSC(self,msg):
-        self.osc.insert(Tkinter.END,msg)
-        self.osc.yview(Tkinter.END)
+        self.osc.insert(END,msg)
+        self.osc.yview(END)
         
     def __createButtons(self,pane):
         #Add the play button
-        play = Tkinter.Button(pane,text = "Play", command=self.playCallback)
+        play = Button(pane,text = "Play", command=self.playCallback)
         play.grid(row=0,column=0)
         
         #Add the pause button
-        pause = Tkinter.Button(pane,text = "Pause", command=self.pauseCallback)
+        pause = Button(pane,text = "Pause", command=self.pauseCallback)
         pause.grid(row=0,column=1)
         
         #Add the clear button, which clears the output box.
-        clear = Tkinter.Button(pane,text = "Clear", command=self.clearCallback)
+        clear = Button(pane,text = "Clear", command=self.clearCallback)
         clear.grid(row=1,column=0)
         
         #Add the connect button
-        Tkinter.Button(pane,text="Connect",command=self.connectCallback).grid(row=1,column=1) 
+        Button(pane,text="Connect",command=self.connectCallback).grid(row=1,column=1) 
     
     def __createConnect(self,pane):
-        self.deviceIPaddressVar = Tkinter.StringVar()
-        self.devicePortVar = Tkinter.StringVar()
-        self.applicationPortVar = Tkinter.StringVar()
+        self.deviceIPaddressVar = StringVar()
+        self.devicePortVar = StringVar()
+        self.applicationPortVar = StringVar()
         self.deviceIPaddressVar.set("Unknown")
         self.devicePortVar.set(str(self.config['device_port']))
         self.applicationPortVar.set(str(self.config['application_port']))
-        Tkinter.Label(pane,text="OSC settings").grid(row=0,column=0)
-        Tkinter.Label(pane,text="Device IP Address : ").grid(row=1,column=0)
-        Tkinter.Entry(pane,textvariable=self.deviceIPaddressVar).grid(row=1,column=1)
-        Tkinter.Label(pane,text="Device Input Port : ").grid(row=2,column=0)
-        Tkinter.Entry(pane,textvariable=self.devicePortVar).grid(row=2,column=1)
-        Tkinter.Label(pane,text="Application Input Port : ").grid(row=3,column=0)
-        Tkinter.Entry(pane,textvariable=self.applicationPortVar).grid(row=3,column=1)
+        Label(pane,text="OSC settings").grid(row=0,column=0)
+        Label(pane,text="Device IP Address : ").grid(row=1,column=0)
+        Entry(pane,textvariable=self.deviceIPaddressVar).grid(row=1,column=1)
+        Label(pane,text="Device Input Port : ").grid(row=2,column=0)
+        Entry(pane,textvariable=self.devicePortVar).grid(row=2,column=1)
+        Label(pane,text="Application Input Port : ").grid(row=3,column=0)
+        Entry(pane,textvariable=self.applicationPortVar).grid(row=3,column=1)
     
     def __updateConnect(self,ip,port):
         pass
     
     def clearCallback(self):
         #Clears the output box
-        self.output.delete(0.0,Tkinter.END)
-        self.osc.delete(0.0,Tkinter.END)
+        self.output.delete(0.0,END)
+        self.osc.delete(0.0,END)
         pass
     
     def exitCallback(self):

@@ -7,9 +7,10 @@ import time
 import utils
 import sys
 import traceback
+from copy import copy
 from Queue import Queue
 from string import ascii_lowercase
-
+from numpy import rot90
 from music21 import note
 from athenaCL.libATH import grammar
 from athenaCL.libATH import markov
@@ -125,7 +126,6 @@ class Generator(object):
         # Indicates currently selected path on Path Map. Value can be 0-7.
         state['path']['selected'] = 0
         state['rhythm']['row_idx'] = 0
-        state['rhythm']['col_idx'] = -1
         return state
     
     def __checkStateFormat(self, state):
@@ -226,6 +226,58 @@ class Generator(object):
             print v
             traceback.print_tb(tb)
             return False
+   
+    def apply_algorithm(self, category, algorithm):
+        if algorithm == 'shiftLeft':
+            self.shift_left(category)
+        elif algorithm == 'shiftRight':
+            self.shift_right(category)
+        else:
+            # Nothing else for the moment.
+            pass
+    
+    def shift_left(self, category):
+        if category == 'rhythm':
+            rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern'])
+            rhythm = rot90(rhythm, 3) # Rotate because pitches are column based.
+            rhythm = rhythm.tolist()
+            rhythm = self.__rotate(rhythm, -1)
+            rhythm = rot90(rhythm) # Rotate back.
+            rhythm = rhythm.tolist()
+            self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm)
+        elif category == 'pitch':
+            pitch = self.deserialize_pitch(self.state['pitch']['pattern'])
+            pitch = rot90(pitch, 3) # Rotate because pitches are column based.
+            pitch = pitch.tolist()
+            pitch = self.__rotate(pitch, -1)
+            pitch = rot90(pitch) # Rotate back.
+            pitch = pitch.tolist()
+            self.state['pitch']['pattern'] = self.serialize_pitch(pitch)
+        else:
+            self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], -1)
+    
+    def shift_right(self, category):
+        if category == 'rhythm':
+            rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern'])
+            rhythm = rot90(rhythm, 3) # Rotate because pitches are column based.
+            rhythm = rhythm.tolist()
+            rhythm = self.__rotate(rhythm, 1)
+            rhythm = rot90(rhythm) # Rotate back.
+            rhythm = rhythm.tolist()
+            self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm)
+        elif category == 'pitch':
+            pitch = self.deserialize_pitch(self.state['pitch']['pattern']) # Deserialize
+            pitch = rot90(pitch, 3) # Rotate because pitches are column based.
+            pitch = pitch.tolist()
+            pitch = self.__rotate(pitch, 1)
+            pitch = rot90(pitch) # Rotate back.
+            pitch = pitch.tolist()
+            self.state['pitch']['pattern'] = self.serialize_pitch(pitch)
+        else:
+            self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], 1)
+    
+    def __rotate(self, l,n):
+        return l[-n:] + l[:-n]        
     
     def __updateOrder(self, attribute, value):
         self.state[attribute]['order'] = value
@@ -332,66 +384,62 @@ class Generator(object):
                 new_pattern[-cell+5][idx] = 1
         return new_pattern
     
-    def generate(self):
+    def generate_row(self):
         """
-        This method generates one Music21 note according to the current state and stores it in the note buffer.
+        This method generates one row of Music21 notes according to the current state and stores it in the note buffer.
         """
         # Get the rhythm multiplier from the currently played row. If it is complete,
         # start another row. The rhythm multiplier may contain an offset (before which
         # and element is played), when the row starts with 0s.
+         
+        # Isn't changed by anyone else in the application.
         row_idx = self.state['rhythm']['row_idx']
-        col_idx = self.state['rhythm']['col_idx']
-        rhythm_pattern = self.state['rhythm']['pattern']
-        if col_idx == -1:
-            # Dealing with pattern offset
+        
+        # !! Hot code !! state can be changed at any moment,
+        # but need a fixed rhythm pattern for the duration of the
+        # function. That's why we copy.
+        rhythm_pattern = copy(self.state['rhythm']['pattern'][row_idx])
+        
+        # I don't care if those change in the middle of the execution.
+        bpm = self.state['bpm']
+        dividor = self.state['rhythm']['dividor']
+        amplitude_pattern = self.state['amplitude']['pattern']
+        amplitude_generator = self.state['amplitude']['order_eng']
+        path_pattern = self.state['path']['pattern']
+        path_generator = self.state['path']['order_eng']
+        pitch_pattern = self.state['pitch']['pattern']
+        pitch_generator = self.state['pitch']['order_eng']
+        
+        # The row offset is the number of 0's before the 
+        # first non-0 value appears on the row. 
+        offset_mult = rhythm_pattern[Generator.OFFSET]
+        duration = (float(offset_mult) * 60.0) / (float(dividor) * float(bpm))
+        n = NoteOffset(duration)
+        self.queue.put(n)
+        self.incrementQueueSize()
+        
+        for idx, rhythm_mult in enumerate(rhythm_pattern[Generator.VALUES]):
+            if idx == len([Generator.VALUES]) - 1:
+                # The rhythm multiplier needs to last until the first
+                # non zero value of the next row. Notice that if the next row
+                # has no non-zero values, than the mult may not extend beyond that.
+                rhythm_mult += offset_mult
             
-            mult = rhythm_pattern[row_idx][Generator.OFFSET]
-            self.state['rhythm']['col_idx'] += 1
-            
-            # Define note duration from rhythm and bpm
-            div = self.state['rhythm']['dividor']
-            duration = (float(mult) * 60.0) / (float(div) * float(self.state['bpm']))
-            # Store in note buffer
-            n = NoteOffset(duration)
-            self.queue.put(n)
-            self.incrementQueueSize()
-            
-        elif 0 <= col_idx and col_idx < len(rhythm_pattern[row_idx][Generator.VALUES]):
-            # Dealing with pattern values
-            
-            mult = rhythm_pattern[row_idx][Generator.VALUES][col_idx]
-            self.state['rhythm']['col_idx'] += 1 
-            
-            if self.state['rhythm']['col_idx'] == len(rhythm_pattern[row_idx][Generator.VALUES]):
-                # If the column index points to the last value of pattern,
-                # We need to choose the next row to be played. The duration
-                # offset of that row must be added to the current multiplier
-                # as well.
-                self.state['rhythm']['row_idx'] = self.state['rhythm']['order_eng'].next()
-                self.state['rhythm']['col_idx'] = -1
-                mult += rhythm_pattern[self.state['rhythm']['row_idx']][Generator.OFFSET]
-            
-            # Define note duration from rhythm and bpm
-            div = self.state['rhythm']['dividor']
-            duration = (float(mult) * 60.0) / (float(div) * float(self.state['bpm']))
-            
-            # Define note pitch from path. An "S" in the path can be used for silence.
-            path = self.state['path']['pattern'][self.state['path']['order_eng'].next()]
-            
+            duration = (float(rhythm_mult) * 60.0) / (float(dividor) * float(bpm))
+            path = path_pattern[path_generator.next()]
             if path == 'S':
                 # Add a single silent note.
                 self.queue.put([Note(0, duration, 0)])
                 self.incrementQueueSize()
             else:
                 # Assign velocity to instrument
-                velocity = int(self.state['amplitude']['pattern'][self.state['amplitude']['order_eng'].next()] * 127) % 127
-                
+                velocity = int(amplitude_pattern[amplitude_generator.next()] * 127) % 127
                 path = note.Note(path).midi
-                
+                 
                 # Set the pitch modulations. If the size of the list of pitch modulations (pitches object) is
                 # greater than one, than multiples notes will be played.
-                pitches = self.state['pitch']['pattern'][self.state['pitch']['order_eng'].next()]
-                
+                pitches = pitch_pattern[pitch_generator.next()]
+                 
                 notes = []
                 for pitch in pitches:
                     # There is always at least one pitch.
@@ -399,9 +447,10 @@ class Generator(object):
                 # Store in note queue
                 self.queue.put(notes)
                 self.incrementQueueSize()
-                
-        else:
-            raise Exception("Invalid column index for rhythm pattern!") 
+
+        
+        # Isn't changed by anyone else in the application.
+        self.state['rhythm']['row_idx'] = self.state['rhythm']['order_eng'].next()
     
     def incrementQueueSize(self):
         self.size_lock.acquire()
@@ -435,9 +484,9 @@ class Generator(object):
             time.sleep(.1)
             while self.playing:
                 time.sleep(.1)
-                if self.size < 2:
-                    while self.size < 5:
-                        self.generate()
+                if self.size < 5:
+                    while self.size < 10:
+                        self.generate_row()
 
 
 class Note(object):
@@ -471,6 +520,9 @@ class RandomGenerator(object):
     def next(self):
         """ Generates a random value using the generator."""
         return
+    
+    def encode_state(obj):
+        str(obj)
 
 
 class CyclicGenerator(RandomGenerator):

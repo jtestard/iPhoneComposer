@@ -130,30 +130,65 @@ class TouchOSC(object):
         """
         Sends the current state of the python application to the device.
         """
-        state_addresses = [] # Values specified in the state 
-        default_addresses = [] # Values required for display but not mentioned in state
         print "============= State being sent ... ==============="
-        pprint(self.generator.state)
+        self.set_zero_values('all')
+        self.set_state_values('all')
+
+
+    def set_zero_values(self, category):
+        '''
+        Set zero-style values for all patterns. Not that bpm, dividor and generators are not affected.
+        '''
+        default_addresses = []
         for attribute in self.generator.state:
             content = self.generator.state[attribute]
-            if attribute=='instrument':
+            if attribute=='instrument' and (category=='instrument' or category=='all'):
                 for i in xrange(4):
                     for j in xrange(8):
                         default_addresses.append('/basic/instrument/%d/%d 0' %  (i+1,j+1))
+            elif attribute=='path' and (category=='path' or category=='all'):
+                # Path board default values
+                for i in range(8):
+                    default_addresses.append('/path/chosen%d %s' % (i+1,'?'))
+            elif attribute=='rhythm' and (category=='rhythm' or category=='all'):
+                # Rhythm pattern
+                for i in xrange(4):
+                    for j in xrange(8):
+                            default_addresses.append("/rhythm/pattern/%d/%d 0" % (4-i,j+1));
+            elif attribute=='pitch' and (category=='pitch' or category=='all'):
+                # Pitch pattern
+                for i in xrange(11):
+                    for j in xrange(8):
+                            default_addresses.append("/pitch/pattern/%d/%d 0" % (11-i,j+1))
+            elif attribute=='amplitude' and (category=='amplitude' or category=='all'):
+                # Default amplitude pattern
+                for i in range(8):
+                    default_addresses.append('/amplitude/pattern/'+str(i+1)+" 0")
+                    default_addresses.append('/amplitude/l'+str(i+1)+" 0")
+            else:
+                #Not recognized
+                pass
+        for packet in default_addresses:
+            addr, value = packet.split(" ")
+            self.send_message(addr,value)
+
+    
+    def set_state_values(self, category):
+        """
+        Category can be the name of a musical feature or 'all'.
+        """
+        state_addresses = []
+        for attribute in self.generator.state:
+            content = self.generator.state[attribute]
+            if attribute=='instrument' and (category=='instrument' or category=='all'):
                 row = 4 - ((content - 1) / 8)
                 col = content % 8
                 state_addresses.append('/basic/instrument/%d/%d 1' % (row,col))
-            elif attribute=='bpm':
+            elif attribute=='bpm' and (category=='bpm' or category=='all'):
                 # BPM value and label
                 state_addresses.append('/basic/bpm '+str(content))
                 state_addresses.append('/basic/bpmValue '+str(content))
-            elif attribute=='path':
-                # Path board default values
-                for i in range(4):
-                    for j in range(12):
-                        default_addresses.append('/path/pattern/'+str(i+1)+"/"+str(j+1)+" 0")
-                for i in range(8):
-                    default_addresses.append('/path/chosen%d %s' % (i+1,'?'))
+            elif attribute=='path' and (category=='path' or category=='all'):
                 selected_path = content['selected']
                 path = content['pattern'][selected_path]
                 # The path value mentioned here is a note string (e.g. 'C3')
@@ -166,14 +201,12 @@ class TouchOSC(object):
                 state_addresses.append('/path/generator/' +
                         str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
-            elif attribute=='rhythm':
+            elif attribute=='rhythm' and (category=='rhythm' or category=='all'):
                 # Rhythm pattern
                 external_pattern = self.generator.deserialize_rhythm(content['pattern'])
                 for i in xrange(4):
                     for j in xrange(8):
-                        if external_pattern[i][j] == 0:
-                            default_addresses.append("/rhythm/pattern/%d/%d 0" % (4-i,j+1));
-                        else:
+                        if external_pattern[i][j] == 1:
                             state_addresses.append("/rhythm/pattern/%d/%d 1" % (4-i,j+1))
                 # Rhythm dividor value and label
                 state_addresses.append('/rhythm/dividor ' + str(self.__reverseDividorValue(content['dividor'])))
@@ -182,24 +215,18 @@ class TouchOSC(object):
                 state_addresses.append('/rhythm/generator/' +
                         str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
-            elif attribute=='pitch':
+            elif attribute=='pitch' and (category=='pitch' or category=='all'):
                 # Pitch pattern
                 external_pattern = self.generator.deserialize_pitch(content['pattern'])
                 for i in xrange(11):
                     for j in xrange(8):
-                        if external_pattern[i][j] == 0:
-                            default_addresses.append("/pitch/pattern/%d/%d 0" % (11-i,j+1))
-                        else:
+                        if external_pattern[i][j] == 1:
                             state_addresses.append("/pitch/pattern/%d/%d 1" % (11-i,j+1))
                 # Pitch generator option
                 state_addresses.append('/pitch/generator/' +
                         str(self.__reverseOrderDict[content['order']])+"/1 1"
                 )
-            elif attribute=='amplitude':
-                # Default amplitude pattern
-                for i in range(8):
-                    default_addresses.append('/amplitude/pattern/'+str(i+1)+" 0")
-                    default_addresses.append('/amplitude/l'+str(i+1)+" 0")
+            elif attribute=='amplitude' and (category=='amplitude' or category=='all'):
                 for i,p in enumerate(content['pattern']):
                     state_addresses.append('/amplitude/pattern/'+ str(i+1)+ " "+ str(p))
                     state_addresses.append('/amplitude/l'+ str(i+1)+ " "+ str(p))
@@ -210,14 +237,10 @@ class TouchOSC(object):
             else:
                 #Not recognized
                 pass
-        print "==========PREREQUISITES============"
-        for packet in default_addresses:
-            addr, value = packet.split(" ")
-            self.send_message(addr,value)
-        print "============ADDRESSES=============="
         for packet in state_addresses:
             addr,value = packet.split(" ")
             self.send_message(addr,value)
+
     
     #Rounding value for rhythm dividor
     def __dividorValue(self,r):
@@ -281,6 +304,11 @@ class TouchOSC(object):
                         pattern_path = "/%s/%s" % (row, col) # Position on the path board
                         value = int(round(float(val[1:][:-1]))) # Value ( on or off)
                         self.update_path(pattern_path,value)
+                    elif addr.startswith('/path/algorithm'):
+                        row, col = tuple(addr.split("/")[-2:])
+                        algorithm_path = "/%s/%s" % (row, col) # Position on the path board
+                        value = int(round(float(val[1:][:-1]))) # Value ( on or off)
+                        self.apply_algorithm('path',algorithm_path,value)
                     elif addr.startswith('/path/select'):
                         selected_path = int(addr.split("/")[-1])-1
                         value = int(round(float(val[1:][:-1])))
@@ -300,6 +328,11 @@ class TouchOSC(object):
                     elif addr.startswith('/rhythm/dividor'):
                         dividor = self.__dividorValue(float(val[1:][:-1]))
                         self.update_dividor(dividor)
+                    elif addr.startswith('/rhythm/algorithm'):
+                        row, col = tuple(addr.split("/")[-2:])
+                        algorithm_path = "/%s/%s" % (row, col) # Position on the path board
+                        value = int(round(float(val[1:][:-1]))) # Value ( on or off)
+                        self.apply_algorithm('rhythm',algorithm_path,value)
                     elif addr.startswith('/pitch/generator'):
                         gen_number = addr.split("/")[-2]
                         gen_type = self.__orderDict[int(gen_number)]
@@ -312,6 +345,11 @@ class TouchOSC(object):
                         col = col - 1
                         value = int(round(float(val[1:][:-1]))) # Value ( on or off)
                         self.update_pitch(row, col, value)
+                    elif addr.startswith('/pitch/algorithm'):
+                        row, col = tuple(addr.split("/")[-2:])
+                        algorithm_path = "/%s/%s" % (row, col) # Position on the path board
+                        value = int(round(float(val[1:][:-1]))) # Value ( on or off)
+                        self.apply_algorithm('pitch',algorithm_path,value)
                     elif addr.startswith('/amplitude/generator'):
                         gen_number = addr.split("/")[-2]
                         gen_type = self.__orderDict[int(gen_number)]
@@ -321,6 +359,11 @@ class TouchOSC(object):
                         amplitude = float(val[1:][:-1])
                         list_idx = int(addr.split("/")[-1]) - 1
                         self.update_amplitude(amplitude,list_idx)
+                    elif addr.startswith('/amplitude/algorithm'):
+                        row, col = tuple(addr.split("/")[-2:])
+                        algorithm_path = "/%s/%s" % (row, col) # Position on the path board
+                        value = int(round(float(val[1:][:-1]))) # Value ( on or off)
+                        self.apply_algorithm('amplitude',algorithm_path,value)
                     else:
                         pass
                 self.__gui.addToOSC(msg)
@@ -406,6 +449,44 @@ class TouchOSC(object):
         else:
             # Ignore calls to the generator with value 0.
             pass
+        
+    def apply_algorithm(self, category, algorithm, value):
+        """
+        If value is non-zero, applies the specified algorithm to the pattern
+        of the specified category, the sends a response to the device to update
+        the display accordingly.
+        
+        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> osc = TouchOSC(g)
+        >>> osc.generator.state['path']['pattern']
+        ['C4', 'C3', 'C3', 'C3', 'C3', 'C3', 'C3', 'C3']
+        >>> osc.apply_algorithm('path','/2/1',1)
+        Unimplemented algorithm selected...
+        >>> osc.apply_algorithm('path','/3/2',1)
+        >>> osc.generator.state['path']['pattern']
+        ['C3', 'C4', 'C3', 'C3', 'C3', 'C3', 'C3', 'C3']
+        >>> osc.generator.state['pitch']['pattern']
+        [[3, 0, -3], [0], [0], [0], [0], [0], [0], [0]]
+        >>> osc.apply_algorithm('pitch','/3/2',1)
+        >>> osc.generator.state['pitch']['pattern']
+        [[0], [3, 0, -3], [0], [0], [0], [0], [0], [0]]
+        """
+        if value !=0:
+            if algorithm == "/3/1" :
+                algorithm = "shiftLeft"
+            elif algorithm == "/3/2" :
+                algorithm = "shiftRight"
+            else:
+                print "Unimplemented algorithm selected..."
+                return
+            if category in ['path','amplitude','rhythm','pitch']:
+                self.generator.apply_algorithm(category, algorithm)
+                if hasattr(self, 'client'):
+                    self.set_zero_values(category)
+                    self.set_state_values(category)
+            else:
+                print "Error : unexpected generator category!"
+                return
     
     def update_path(self,pattern_path,value):
         """

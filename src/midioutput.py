@@ -15,6 +15,7 @@ class MidiOut(object):
         self.playing = False
         self.__generator = gen
         self.tracks = {}
+        self.currently_playing = []
         
         self.__midiOut = rtmidi.MidiOut()
         channel_name = config['midi_channel']
@@ -37,13 +38,20 @@ class MidiOut(object):
         Sends a note off events to all currently playing notes.
         Used when exiting or pausing the application.
         """
-        for note_off in self.note_offs:
-            self.__midiOut.send_message(note_off)
+        for note_off in self.currently_playing:
+            self.__send_notes(note_off)
+        pass
+    
+    def __send_notes(self, note):
+        if note[0] == 0x90:
+            print "MIDI NOTE ON : %s" % note
+        else:
+            print "MIDI NOTE OFF : %s" % note
+        self.__midiOut.send_message(note)
     
     def run(self):
         """
         """
-        self.note_offs = []
         while self.__generator.active:
             time.sleep(.05)
             while self.__generator.playing:
@@ -51,18 +59,19 @@ class MidiOut(object):
                     note = self.__generator.queue.get()
                     size = self.__generator.decrementQueueSize()
                     if isinstance(note,list):
+                        print "New list..."
                         # We received a list of notes
                         # Must change to note-off followed by note-on.
                         for element in note:
                             note_on = [0x90,element.pitch,element.velocity]
-                            self.note_offs.append([0x80,element.pitch,0])
-                            msg = "%d : %s\n" % (size, ("{}".format(vars(element))))
+                            self.currently_playing.append([0x80,element.pitch,0])
+                            msg = "%s\n" % ("{}".format(vars(element)))
                             self.__gui.addToOutput(msg)
-                            self.__midiOut.send_message(note_on)
+                            self.__send_notes(note_on)
                         time.sleep(note[0].duration)
-                        for note_off in self.note_offs:
-                            self.__midiOut.send_message(note_off)
-                        self.__note_offs = []
+                        for note_off in self.currently_playing:
+                            self.__send_notes(note_off)
+                        self.currently_playing = []
                     elif isinstance(note, generator.NoteOffset):
                         # This is a pattern offset. We wait a little bit
                         time.sleep(note.duration)
