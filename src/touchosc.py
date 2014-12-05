@@ -584,11 +584,10 @@ class TouchOSC(object):
             column.append(r[col])
         column[row] = value
         self.generator.update('pitch pattern %d' % col, column)
-        
-        if hasattr(self, 'client'):
-            if 1 not in column:
-                # If all atoms are removed from a column, an atom on row 0 is added (in state as well).
-                self.send_message('/pitch/pattern/6/%d' % col, 1)
+        if hasattr(self,'client'):
+            col = col + 1
+            row = 11 - row
+            self.send_message("/pitch/pattern/%d/%d" % (row, col), value)
 
     def update_amplitude(self,amplitude,list_idx):
         """

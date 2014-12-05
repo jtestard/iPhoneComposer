@@ -206,8 +206,6 @@ class Generator(object):
                 for i in xrange(11):
                     if value[i] == 1:
                         pitch_column.append(5-i)
-                if not pitch_column:
-                    pitch_column.append(0)
                 self.state['pitch']['pattern'][idx] = pitch_column
             elif attribute.startswith("pitch order"):
                 self.__updateOrder('pitch', value)
@@ -351,9 +349,6 @@ class Generator(object):
         by the user and visible on the interface. As such the pattern must be
         serialized before being modified by the generator.
         
-        Note that there must always be one pitch. If a column has no 1's, then
-        a 1 will be added on the 0 row (implicitly in the serialization output).
-        
         >>> g = Generator("../resources/presets/default.yml", {})
         >>> pattern = g.deserialize_pitch(g.state['pitch']['pattern'])
         >>> g.serialize_pitch(pattern)
@@ -364,12 +359,6 @@ class Generator(object):
             for j in xrange(8):
                 if pattern[i][j] == 1:
                     new_pattern[j].append(5-i)
-        
-        # Fill in the holes with pitch 0.
-        for column in new_pattern:
-            if not column:
-                column.append(0)
-        
         return new_pattern
     
     def deserialize_pitch(self, pattern):
@@ -444,10 +433,14 @@ class Generator(object):
                 for pitch in pitches:
                     # There is always at least one pitch.
                     notes.append(Note(path+pitch, duration, velocity))
-                # Store in note queue
-                self.queue.put(notes)
-                self.incrementQueueSize()
-
+                if notes:
+                    # Store in note queue
+                    self.queue.put(notes)
+                    self.incrementQueueSize()
+                else:
+                    # no pitch specified for that column
+                    self.queue.put(NoteOffset(duration))
+                    self.incrementQueueSize()
         
         # Isn't changed by anyone else in the application.
         self.state['rhythm']['row_idx'] = self.state['rhythm']['order_eng'].next()
