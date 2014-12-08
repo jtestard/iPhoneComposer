@@ -418,6 +418,7 @@ class Generator(object):
             path = path_pattern[path_generator.next()]
             if path == 'S':
                 # Add a single silent note.
+                pitches = pitch_pattern[pitch_generator.next()]
                 self.queue.put([Note(0, duration, 0)])
                 self.incrementQueueSize()
             else:

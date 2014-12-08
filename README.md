@@ -97,20 +97,12 @@ Once the application is started, the final set up step is to make sure that iPho
   - The save option is not yet supported.
   - The application does not support dynamic port allocation yet, so please clear the 8000 and 9000 ports on your machine in order for the machine to run properly.
 
-## Opinion :
-
-### Change the way Path works
- - Make path fixed length (makes things easier to understand)
- - Each note has its own board. One value per board
- - This way, duplicate values can be chosen (they will be on different boards).
- - Easier to deal with Markov.
- - More handy for the user.
- - Visualization simpler.
-
-## Optimizations:
+## Improvements
 
  - Remove internal format for pitch and rhythm.
+ - Ensure pitch and path are always on the same page.
  - Reduce number of boolean condition checks for send state.
+ - Instore the block limitation state.
  
         
         # self.path_values = ['G#3', 'G#2', 'G#5', 'G#4', 'G5', 'G4', 'G3', 'G2', 'C3', 'C2', 'C5', 'C4', 'F2', 'F3', 'F4', 'F5', 'B4', 'B2', 'B3', 'F#2', 'F#3', 'F#4', 'F#5', 'A3', 'A2', 'A5', 'A4', 'E5', 'E4', 'D#4', 'D#5', 'D#2', 'D#3', 'E3', 'E2', 'C#5', 'C#4', 'C#3', 'C#2', 'A#3', 'A#2', 'S', 'A#5', 'A#4', 'D4', 'D5', 'D2', 'D3']

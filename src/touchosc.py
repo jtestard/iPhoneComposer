@@ -550,6 +550,10 @@ class TouchOSC(object):
         full_row = external_pattern[row]
         full_row[col] = value
         self.generator.update('rhythm pattern %d' % row, full_row)
+        if hasattr(self,'client'):
+            row = 4 - row
+            col = col + 1
+            self.send_message("/rhythm/pattern/%d/%d" % (row, col), value)
     
     def update_dividor(self,dividor):
         """
@@ -602,7 +606,7 @@ class TouchOSC(object):
         """
         self.generator.update('amplitude pattern %d' % list_idx, amplitude)
         if hasattr(self, 'client'):
-            self.send_message('/amplitude/l%d' % (list_idx + 1), amplitude)
+            self.send_message('/amplitude/l%d' % (list_idx + 1), int(amplitude * 127))
 
     def reset_handler(self,addr, tags, data, source):
         try:
