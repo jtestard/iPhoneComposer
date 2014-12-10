@@ -13,7 +13,7 @@ from _sqlite3 import Row
 
 class TouchOSC(object):
     
-    def __init__(self,gen,gui=None,filename=None,config=None):
+    def __init__(self, gen, gui=None, filename=None, config=None):
 
         self.generator = gen
         
@@ -69,12 +69,23 @@ class TouchOSC(object):
                 oscaddr = "/"+str(touchosctab)+"/"+touchoscop
                 self.server.addMsgHandler(oscaddr,self.printing_handler)
     
-            #Set additional handlers
-            self.server.addMsgHandler('/quit',self.printing_handler)
-            self.server.daemon = True
+        #Set additional handlers
+        self.server.addMsgHandler('/quit',self.printing_handler)
+        self.server.addMsgHandler('/basic/play', self.play_handler)
+        self.server.addMsgHandler('/basic/pause', self.pause_handler)
+        self.server.addMsgHandler('/basic/mute', self.mute_handler)
+        self.server.addMsgHandler('/basic/unmute', self.unmute_handler)
+        
+        self.server.daemon = True
         
         #Queue for osc messages
         self.__messageQueue = Queue()
+    
+    def set_preset_dir(self, preset_dir):
+        self.preset_dir = preset_dir
+    
+    def set_midi_out(self, midi_out):
+        self.midi_out = midi_out
     
     def update_application_server(self):
         """
@@ -121,10 +132,7 @@ class TouchOSC(object):
                 )
         )
         self.send_state()
-        self.__gui.addToOSC(
-                "State sent successfully to device!"
-        )
-
+        self.__gui.addToOSC("State sent successfully to device!")
     
     def send_state(self):
         """
@@ -294,6 +302,12 @@ class TouchOSC(object):
                         row = 4 - row
                         col = col - 1
                         self.update_instrument(row, col, value)
+                    elif addr.startswith('/basic/preset'):
+                        value = int(round(float(val[1:][:-1])))
+                        row, col = tuple(addr.split("/")[-2:])
+                        row = int(row); col = int(col)
+                        row = 2 - row
+                        self.update_preset(row, col, value)
                     elif addr.startswith('/path/generator'):
                         gen_number = addr.split("/")[-2]
                         gen_type = self.__orderDict[int(gen_number)]
@@ -386,7 +400,6 @@ class TouchOSC(object):
         Sends a message to the device. Assumes the 
         client attribute has been set.
         """
-        print "Address: %s \t\t Message: %s" % (address, str(value))
         msg = OSC.OSCMessage()
         msg.setAddress(address)
         msg.append(value)
@@ -425,6 +438,27 @@ class TouchOSC(object):
         self.generator.update('bpm', bpm)
         if hasattr(self, 'client'):
             self.send_message('/basic/bpmValue', bpm)
+    
+    def update_preset(self, row, col, value):
+        """
+        Updates preset.
+        Sends acknowledgement message to device.
+        
+        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> osc = TouchOSC(g)
+        >>> osc.set_preset_dir("../resources/presets")
+        >>> osc.update_preset(2,1)
+        """
+        if value != 0:
+            preset = row * 8 + col
+            self.generator.state = self.generator.readStateFromFile("%s/%s" % 
+                (
+                    self.preset_dir,
+                    "preset%d.yml" % preset
+                )
+            )
+            if hasattr(self, 'client'):
+                self.send_state()
 
     def update_generator(self,category, gen_type, value):
         """
@@ -453,7 +487,7 @@ class TouchOSC(object):
     def apply_algorithm(self, category, algorithm, value):
         """
         If value is non-zero, applies the specified algorithm to the pattern
-        of the specified category, the sends a response to the device to update
+        of the specified category, then sends a response to the device to update
         the display accordingly.
         
         >>> g = Generator("../resources/presets/default.yml", {})
@@ -618,11 +652,45 @@ class TouchOSC(object):
     
     #Simple handler that justs prints
     def printing_handler(self,addr, tags, data, source):
+        """
+        Prints the incoming OSC messages from the device onto the desktop user interface.
+        If the address string contains the substring '/position/', then it is assumed this
+        message comes from the local feedback of a position indicator and is ignored.
+        """
         try:
-            msg = "{} {}\n".format(addr,data)
-            self.__messageQueue.put(msg)
+            if '/position/' not in addr:
+                msg = "{} {}\n".format(addr,data)
+                self.__messageQueue.put(msg)
         except:
             print sys.exc_info()
+    
+    def play_handler(self, add, tags, data, source):
+        """
+        Used when pressing on the play button.
+        """
+        if int(data[0]) > 0:
+            self.generator.playing = True
+    
+    def pause_handler(self, add, tags, data, source):
+        """
+        Used when pressing on the pause button.
+        """
+        if int(data[0]) > 0:
+            self.generator.playing = False
+    
+    def mute_handler(self, add, tags, data, source):
+        """
+        Used when pressing on the mute button.
+        """
+        if int(data[0]) > 0:
+            self.midi_out.mute = True
+    
+    def unmute_handler(self, add, tags, data, source):
+        """
+        Used when pressing on the unmute button.
+        """
+        if int(data[0]) > 0:
+            self.midi_out.mute = False
 
 if __name__ == '__main__':
     import doctest

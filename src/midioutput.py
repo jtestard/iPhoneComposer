@@ -13,6 +13,7 @@ class MidiOut(object):
         self.__gui = gui
         #This is used by the gui for playing/pausing
         self.playing = False
+        self.mute = False
         self.__generator = gen
         self.tracks = {}
         self.currently_playing = []
@@ -23,6 +24,9 @@ class MidiOut(object):
         msg = "MIDI output chosen : %s\n" % channel_name
         self.__gui.addToOutput(msg)
         self.__setup()
+    
+    def set_touch_osc(self, touch_osc):
+        self.__touch_osc = touch_osc
     
     def __setup(self):
         for i in range(16):
@@ -47,6 +51,8 @@ class MidiOut(object):
             print "MIDI NOTE ON : %s" % note
         else:
             print "MIDI NOTE OFF : %s" % note
+        if self.mute:
+            note[2] = 0
         self.__midiOut.send_message(note)
     
     def run(self):
@@ -59,9 +65,14 @@ class MidiOut(object):
                     note = self.__generator.queue.get()
                     size = self.__generator.decrementQueueSize()
                     if isinstance(note,list):
-                        print "New list..."
                         # We received a list of notes
                         # Must change to note-off followed by note-on.
+                        position_indicators = note.pop(0)
+                        print "Position Indicators : %s" % position_indicators
+                        self.__touch_osc.send_message("/path/position/1/%d" % position_indicators[0], 1)
+                        self.__touch_osc.send_message("/rhythm/position/%d/1" % position_indicators[1], 1)
+                        self.__touch_osc.send_message("/pitch/position/1/%d" % position_indicators[2], 1)
+                        self.__touch_osc.send_message("/amplitude/position/1/%d" % position_indicators[3], 1)
                         for element in note:
                             note_on = [0x90,element.pitch,element.velocity]
                             self.currently_playing.append([0x80,element.pitch,0])

@@ -42,6 +42,7 @@ class Generator(object):
         # does not support queue.qsize()
         self.size = 0
         self.size_lock = Lock()
+        self.rhythm_lock = Lock()
         
         self.schema = Schema({
             Required('instrument'): All(int, Range(min=1, max=32)),
@@ -96,9 +97,12 @@ class Generator(object):
         self.state = self.readState()
     
     def readState(self):
+        return self.readStateFromFile(self.file)
+        
+    def readStateFromFile(self, file):
         # Read algorithm state
         try:
-            with open(self.file) as f:
+            with open(file) as f:
                 state = yaml.load(f)
         except IOError:
             t, v, tb = sys.exc_info()
@@ -197,7 +201,9 @@ class Generator(object):
                     while cur < 8 and value[cur] == 0:
                         cur += 1
                     values.append(cur - val)
+                self.rhythm_lock.acquire() # Hot code which needs to be locked.
                 self.state['rhythm']['pattern'][idx] = (offset, values)
+                self.rhythm_lock.release()
             elif attribute.startswith("rhythm dividor"):
                 self.state['rhythm']['dividor'] = value
             elif attribute.startswith("pitch pattern"):
@@ -382,12 +388,17 @@ class Generator(object):
         # and element is played), when the row starts with 0s.
          
         # Isn't changed by anyone else in the application.
+        rhythm_generator = self.state['rhythm']['order_eng']
+        rhythm_pi = rhythm_generator.next() # rhythm position indicator.
+        self.state['rhythm']['row_idx'] = rhythm_pi
         row_idx = self.state['rhythm']['row_idx']
         
         # !! Hot code !! state can be changed at any moment,
         # but need a fixed rhythm pattern for the duration of the
         # function. That's why we copy.
+        self.rhythm_lock.acquire()
         rhythm_pattern = copy(self.state['rhythm']['pattern'][row_idx])
+        self.rhythm_lock.release()
         
         # I don't care if those change in the middle of the execution.
         bpm = self.state['bpm']
@@ -414,37 +425,45 @@ class Generator(object):
                 # has no non-zero values, than the mult may not extend beyond that.
                 rhythm_mult += offset_mult
             
+            # Handle position indicators. Rhythm has to be obtained earlier
+            # because the multiple notes correspond to the same rhythm position indicator.
+            notes = []
+            path_pi = path_generator.next()
+            pitch_pi = pitch_generator.next()
+            amplitude_pi = amplitude_generator.next()
+            # Prepend position indices. Index positions start at 1 instead of 0.
+            notes.insert(0,[path_pi + 1, 4 - rhythm_pi, pitch_pi + 1, amplitude_pi + 1])
+            
             duration = (float(rhythm_mult) * 60.0) / (float(dividor) * float(bpm))
-            path = path_pattern[path_generator.next()]
+            path = path_pattern[path_pi]
+            
+            
             if path == 'S':
                 # Add a single silent note.
-                pitches = pitch_pattern[pitch_generator.next()]
-                self.queue.put([Note(0, duration, 0)])
+                notes.append(Note(0, duration, 0))
+                self.queue.put(notes)
                 self.incrementQueueSize()
             else:
                 # Assign velocity to instrument
-                velocity = int(amplitude_pattern[amplitude_generator.next()] * 127) % 127
+                velocity = int(amplitude_pattern[amplitude_pi] * 127) % 127
                 path = note.Note(path).midi
                  
                 # Set the pitch modulations. If the size of the list of pitch modulations (pitches object) is
                 # greater than one, than multiples notes will be played.
-                pitches = pitch_pattern[pitch_generator.next()]
-                 
-                notes = []
+                pitches = pitch_pattern[pitch_pi]
                 for pitch in pitches:
                     # There is always at least one pitch.
                     notes.append(Note(path+pitch, duration, velocity))
-                if notes:
+                
+                if len(notes) > 1:
                     # Store in note queue
                     self.queue.put(notes)
                     self.incrementQueueSize()
                 else:
                     # no pitch specified for that column
-                    self.queue.put(NoteOffset(duration))
+                    notes.append(Note(path,duration,0))
+                    self.queue.put(notes)
                     self.incrementQueueSize()
-        
-        # Isn't changed by anyone else in the application.
-        self.state['rhythm']['row_idx'] = self.state['rhythm']['order_eng'].next()
     
     def incrementQueueSize(self):
         self.size_lock.acquire()
@@ -491,7 +510,11 @@ class Note(object):
         self.velocity = v
     
     def __repr__(self):
-        return "Note(%d,%f,%d)" % (self.pitch, self.duration, self.velocity)
+        return "Note(%d,%f,%d)" % (
+            self.pitch,
+            self.duration,
+            self.velocity
+        )
 
 
 class NoteOffset(object):
@@ -526,8 +549,9 @@ class CyclicGenerator(RandomGenerator):
         self.__size = size
         
     def next(self):
+        value = self.__counter
         self.__counter = (self.__counter + 1) % self.__size
-        return self.__counter
+        return value
     
     def __repr__(self):
         return "CyclicGenerator"

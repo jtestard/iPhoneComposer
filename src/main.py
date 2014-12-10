@@ -53,12 +53,28 @@ if __name__ == '__main__':
         dest="osc_filename",
         help="File containing osc control mappings"
     )
+    parser.add_argument(
+        "-p", "--preset-directory",
+        required=False,
+        default=currentdir+"/../resources/presets",
+        action="store",
+        dest="preset_dir",
+        help = """
+            Directory containing presets to be used in the application. Presets must be 
+            within the root of that directory and must bear the name preset[x].yml, where
+            x is a value from 1 to 12. That preset will be matched to its corresponding 
+            position on the application.
+            !! WARNING !! All 12 presets must be present in the root of the directory.
+        """
+    )
+    
     options = parser.parse_args()
 
     # Obtaining configuration file names
     gen_filename = options.algorithm_filename 
     oscmap_filename = options.osc_filename
     config_filename = options.config_filename
+    preset_dir = options.preset_dir
     
     # Building config object
     with open(config_filename) as config_file:
@@ -68,13 +84,16 @@ if __name__ == '__main__':
     print "Building modules..."
     gen = generator.Generator(gen_filename, config)
     print "Generator setup complete"
-    gui = gui.GUI(gen, config)
+    gui = gui.GUI(gen, config, preset_dir)
     print "GUI setup complete"
     midiout = midioutput.MidiOut(gen, gui, config)
     gui.set_midi_output(midiout)
     print "MidiOut setup complete"
     osc = touchosc.TouchOSC(gen, gui, oscmap_filename, config)
     gui.set_touch_osc(osc)
+    midiout.set_touch_osc(osc)
+    osc.set_midi_out(midiout)
+    osc.set_preset_dir(preset_dir)
     print "OSC setup complete"
     
     # Building workers

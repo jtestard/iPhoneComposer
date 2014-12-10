@@ -15,14 +15,15 @@ import simplejson as json
 
 class GUI(object):
     
-    def __init__(self,gen,config):
+    def __init__(self, gen, config, preset_dir):
         # These will be set later (might consider removing them?)
         self.deviceIP = ''
         self.devicePort = 0
         self.applicationPort = 0
-        self.config = config 
+        self.config = config
+        self.preset_dir = preset_dir
         
-        self.__generator = gen
+        self.generator = gen
         try:
             self.__root=Tk()
             screen_w = self.__root.winfo_screenwidth()
@@ -46,10 +47,18 @@ class GUI(object):
             
             # Create menu
             menubar = Menu(self.__root)
+            preset_handlers = self.makeShowPresetHandlers()
             self.__root.config(menu=menubar)
             optionsMenu = Menu(menubar)
             menubar.add_cascade(label="Options",menu=optionsMenu) 
             optionsMenu.add_command(label="Show internal state", command=self.showInternalState)
+            presetMenu = Menu(menubar)
+            menubar.add_cascade(label="Presets",menu=presetMenu)
+            for i in xrange(12):
+                presetMenu.add_command(
+                    label="Show preset %d state" % (i+1),
+                    command=preset_handlers[i]
+                )
             
             # Add an output list that may be accessed publicly
             mainframe = Frame(self.__window, bd=2, relief=SUNKEN,width=500,height=400)
@@ -109,25 +118,33 @@ class GUI(object):
         window.attributes('-topmost', 0)
     
     def showInternalState(self):
-        state = self.__generator.state
+        self.showState(self.generator.state, "Application Internal State")
+    
+    def makeShowPresetHandlers(self):
+        preset_handlers = []
+        for i in xrange(1,13):
+            preset_handlers.append(PresetHandler(self, i))
+        return preset_handlers
+        
+    def showState(self, state, title):
         internal_state = "Instrument : %d\n" % state['instrument']
         internal_state += "BPM : %d\n" % state['bpm']
         internal_state += "Path Pattern : %s\n" % state['path']['pattern']
         internal_state += "Path Generator : %s\n" % state['path']['order']
-        rhythm_pattern = self.__generator.deserialize_rhythm(state['rhythm']['pattern'])
+        rhythm_pattern = self.generator.deserialize_rhythm(state['rhythm']['pattern'])
         internal_state += "Rhythm Pattern :\n"
         for pat in rhythm_pattern:
              internal_state += "%s\n" % pat
         internal_state += "Rhythm Generator : %s\n" % state['rhythm']['order']
         internal_state += "Pitch Pattern :\n"
-        pitch_pattern = self.__generator.deserialize_pitch(state['pitch']['pattern'])
+        pitch_pattern = self.generator.deserialize_pitch(state['pitch']['pattern'])
         for pat in pitch_pattern:
              internal_state += "%s\n" % pat
         internal_state += "Pitch Generator : %s\n" % state['pitch']['order']
         internal_state += "Amplitude Pattern : %s\n" % state['amplitude']['pattern']
         internal_state += "Amplitude Generator : %s" % state['amplitude']['order']
         tkMessageBox.showinfo(
-            "Application Internal State",
+            title,
             internal_state
         )
 
@@ -181,8 +198,8 @@ class GUI(object):
     
     def exitCallback(self):
         self.__midi_output.exit_notes()
-        self.__generator.playing = False
-        self.__generator.active = False
+        self.generator.playing = False
+        self.generator.active = False
         self.__root.quit()
         print "Exit was successful."
         sys.exit(0)
@@ -206,10 +223,23 @@ class GUI(object):
             ) 
         
     def playCallback(self):
-        self.__generator.playing = True
+        self.generator.playing = True
     
     def pauseCallback(self):
-        self.__generator.playing = False
+        self.generator.playing = False
     
     def run(self):
         self.__root.mainloop()
+
+
+class PresetHandler:
+    
+    def __init__(self, gui, idx):
+        self.gui = gui
+        self.idx = idx
+    
+    def __call__(self):
+        self.gui.showState(
+            self.gui.generator.readStateFromFile("%s/%s" % (self.gui.preset_dir, "preset%d.yml" % self.idx)),
+            "Preset %d State Preview" % self.idx
+        )
