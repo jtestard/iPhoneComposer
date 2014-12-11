@@ -1,6 +1,7 @@
 import time
 import rtmidi
 import generator
+import logging
 from Queue import Empty
 
 class MidiOut(object):
@@ -11,6 +12,7 @@ class MidiOut(object):
         MIDI output chosen : SimpleSynth virtual input
         """
         self.__gui = gui
+        self.__logger = logging.getLogger(__name__)
         #This is used by the gui for playing/pausing
         self.playing = False
         self.mute = False
@@ -48,9 +50,9 @@ class MidiOut(object):
     
     def __send_notes(self, note):
         if note[0] == 0x90:
-            print "MIDI NOTE ON : %s" % note
+            self.__logger.info("MIDI NOTE ON : %s" % note)
         else:
-            print "MIDI NOTE OFF : %s" % note
+            self.__logger.info("MIDI NOTE OFF : %s" % note)
         if self.mute:
             note[2] = 0
         self.__midiOut.send_message(note)
@@ -68,7 +70,6 @@ class MidiOut(object):
                         # We received a list of notes
                         # Must change to note-off followed by note-on.
                         position_indicators = note.pop(0)
-                        print "Position Indicators : %s" % position_indicators
                         self.__touch_osc.send_message("/path/position/1/%d" % position_indicators[0], 1)
                         self.__touch_osc.send_message("/rhythm/position/%d/1" % position_indicators[1], 1)
                         self.__touch_osc.send_message("/pitch/position/1/%d" % position_indicators[2], 1)
