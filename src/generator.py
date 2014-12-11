@@ -14,7 +14,6 @@ from numpy import rot90
 from music21 import note
 from athenaCL.libATH import grammar
 from athenaCL.libATH import markov
-from Cython.Compiler.Naming import cur_scope_cname
 
 lock = Lock()
 
