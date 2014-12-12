@@ -294,7 +294,11 @@ class Generator(object):
             path = self.state['path']['pattern']
             length = len(path)
             for i in range(length):
-                new_path = note.Note(path[i]).pitch.midi + 1 # convert pitch name to MIDI pitch number
+                new_path = note.Note(path[i]).pitch.midi + 1 # convert pitch name to MIDI pitch number and transpose pitch upward by semitone
+				if new_path > 127:
+					new_path = 127 # maximal MIDI pitch number
+				else
+					pass # do nothing
                 path[i] = note.Note(new_path).nameWithOctave # convert MIDI pitch number to pitch name
             self.state['path']['pattern'] = path
         elif category == 'rhythm': # move rhythm patten upward vertically
@@ -309,22 +313,26 @@ class Generator(object):
             amplitude = self.state['amplitude']['pattern']
             length = len(amplitude)
             for i in range(length):
-                amplitude[i] = amplitude[i]+0.1 # increase amplitude
-                if amplitude[i] > 1.0:
-                    amplitude[i] = 1.0
+				amplitude[i] = amplitude[i] + 0.1 # increase amplitude
+				if amplitude[i] > 1
+	                amplitude[i] = 1 # maximal amplitude
+				else
+					pass # do nothing
             self.state['amplitude']['pattern'] = amplitude
-        else: # not applicable to other categories
+        else: # other categories
             pass # do nothing
 
     def shift_down(self, category):
         if category == 'path': # transpose path downward by semitone
             path = self.state['path']['pattern']
             length = len(path)
-            new_path = []
             for i in range(length):
-                new_path.append(note.Note(path[i]).pitch.midi) # convert pitch name to MIDI pitch number
-                new_path[i] = new_path[i]-1 # transpose pitch downward by semitone
-                path[i] = note.Note(new_path[i]).nameWithOctave # convert MIDI pitch number to pitch name
+                new_path = note.Note(path[i]).pitch.midi - 1 # convert pitch name to MIDI pitch number and transpose pitch downward by semitone
+				if new_path < 0:
+					new_path = 0 # minimal MIDI pitch number
+				else
+					pass # do nothing
+                path[i] = note.Note(new_path).nameWithOctave # convert MIDI pitch number to pitch name
             self.state['path']['pattern'] = path
         elif category == 'rhythm': # move rhythm patten downward vertically
             rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern'])
@@ -338,9 +346,13 @@ class Generator(object):
             amplitude = self.state['amplitude']['pattern']
             length = len(amplitude)
             for i in range(length):
-                amplitude[i] = amplitude[i]-0.1 # decrease amplitude
+				amplitude[i] = amplitude[i] - 0.1 # decrease amplitude
+				if amplitude[i] < 0
+	                amplitude[i] = 0 # minimal amplitude
+				else 
+					pass # do nothing
             self.state['amplitude']['pattern'] = amplitude
-        else: # not applicable to other categories
+        else: # other categories
             pass # do nothing
 
     def retrograde(self, category):
@@ -374,14 +386,14 @@ class Generator(object):
                     new_path_inversion.append(new_path_inversion[i-1]-(new_path[i]-new_path[i-1])) # inverse transposition
                 path[i] = note.Note(new_path_inversion[i]).nameWithOctave # convert MIDI pitch number to pitch name
             self.state['path']['pattern'] = path
-        else: # not applicable to other categories
+        else: # other categories
             pass # do nothing
 
     def retrograde_inverse(self, category):
         if category == 'path':
             self.inverse(category) # inverse before retrograde
             self.state['path']['pattern'].reverse() # retrograde after inverse
-        else: # not applicable to other categories
+        else: # other categories
             pass # do nothing
     
     def __rotate(self, l,n):
