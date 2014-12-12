@@ -1,17 +1,17 @@
 instrument: 23
-bpm : 110
+bpm : 100
 rhythm :
   dividor : 4
   pattern : [
     [1,0,0,0,1,0,0,0],
     [1,0,0,0,1,0,0,0],
-    [1,0,0,0,0,1,0,0],
-    [1,0,0,0,0,0,1,0]
+    [1,0,0,0,1,0,0,0],
+    [1,0,0,0,1,0,0,0]
   ]
   order : cyclic
 path: 
-  pattern: ['A3', 'G3', 'A3', 'E3', 'G3', 'F3', 'A3', 'G3']
-  order : cyclic 
+  pattern: ['A2', 'F3', 'E3', 'C3', 'D3', 'C3', 'B2', 'A2']
+  order : cyclic
 pitch:
   pattern: [
     [0,0,0,0,0,0,0,0],

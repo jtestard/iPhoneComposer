@@ -11,7 +11,7 @@ from json import dumps
 from OSC import OSCClientError
 import tkMessageBox
 import subprocess
-import simplejson as json
+import json
 
 class GUI(object):
     
