@@ -230,12 +230,22 @@ class Generator(object):
             print v
             traceback.print_tb(tb)
             return False
-   
+    
     def apply_algorithm(self, category, algorithm):
         if algorithm == 'shiftLeft':
             self.shift_left(category)
         elif algorithm == 'shiftRight':
             self.shift_right(category)
+        elif algorithm == 'shiftUp':
+            self.shift_up(category)
+        elif algorithm == 'shiftDown':
+            self.shift_down(category)
+        elif algorithm == 'retrograde':
+            self.retrograde(category)
+        elif algorithm == 'inverse':
+            self.inverse(category)
+        elif algorithm == 'retrograde-inverse':
+            self.retrograde_inverse(category)
         else:
             # Nothing else for the moment.
             pass
@@ -279,6 +289,101 @@ class Generator(object):
             self.state['pitch']['pattern'] = self.serialize_pitch(pitch)
         else:
             self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], 1)
+
+    def shift_up(self, category):
+        if category == 'path': # transpose path upward by semitone
+            path = self.state['path']['pattern']
+            length = len(path)
+            for i in range(length):
+                new_path = note.Note(path[i]).pitch.midi + 1 # convert pitch name to MIDI pitch number
+                path[i] = note.Note(new_path).nameWithOctave # convert MIDI pitch number to pitch name
+            self.state['path']['pattern'] = path
+        elif category == 'rhythm': # move rhythm patten upward vertically
+            rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern'])
+            rhythm = self.__rotate(rhythm, -1)
+            self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm)
+        elif category == 'pitch': # move pitch patten upward vertically
+            pitch = self.deserialize_pitch(self.state['pitch']['pattern'])
+            pitch = self.__rotate(pitch, -1)
+            self.state['pitch']['pattern'] = self.serialize_pitch(pitch)
+        elif category == 'amplitude': # increase all amplitudes
+            amplitude = self.state['amplitude']['pattern']
+            length = len(amplitude)
+            for i in range(length):
+                amplitude[i] = amplitude[i]+0.1 # increase amplitude
+                if amplitude[i] > 1.0:
+                    amplitude[i] = 1.0
+            self.state['amplitude']['pattern'] = amplitude
+        else: # not applicable to other categories
+            pass # do nothing
+
+    def shift_down(self, category):
+        if category == 'path': # transpose path downward by semitone
+            path = self.state['path']['pattern']
+            length = len(path)
+            new_path = []
+            for i in range(length):
+                new_path.append(note.Note(path[i]).pitch.midi) # convert pitch name to MIDI pitch number
+                new_path[i] = new_path[i]-1 # transpose pitch downward by semitone
+                path[i] = note.Note(new_path[i]).nameWithOctave # convert MIDI pitch number to pitch name
+            self.state['path']['pattern'] = path
+        elif category == 'rhythm': # move rhythm patten downward vertically
+            rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern'])
+            rhythm = self.__rotate(rhythm, 1)
+            self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm)
+        elif category == 'pitch': # move pitch patten downward vertically
+            pitch = self.deserialize_pitch(self.state['pitch']['pattern'])
+            pitch = self.__rotate(pitch, 1)
+            self.state['pitch']['pattern'] = self.serialize_pitch(pitch)
+        elif category == 'amplitude': # decrease all amplitudes
+            amplitude = self.state['amplitude']['pattern']
+            length = len(amplitude)
+            for i in range(length):
+                amplitude[i] = amplitude[i]-0.1 # decrease amplitude
+            self.state['amplitude']['pattern'] = amplitude
+        else: # not applicable to other categories
+            pass # do nothing
+
+    def retrograde(self, category):
+        if category == 'rhythm':
+            rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern']) # deserialize
+            sublist = 0 # counter
+            [sublist.reverse() for sublist in rhythm] # reverse the sublists
+            self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm) # serialize
+        elif category == 'pitch':
+            pitch = self.deserialize_pitch(self.state['pitch']['pattern']) # deserialize
+            sublist = 0 # counter
+            for i in pitch:
+                pitch[sublist].reverse() # reverse the sublist
+                sublist += 1 # go to next sublist
+            self.state['pitch']['pattern'] = self.serialize_pitch(pitch) # serialize
+        else:
+            # import pdb; pdb.set_trace()
+            self.state[category]['pattern'].reverse()
+
+    def inverse(self, category):
+        if category == 'path':
+            path = self.state['path']['pattern']
+            length = len(path)
+            new_path = []
+            new_path_inversion = []
+            for i in xrange(length):
+                new_path.append(note.Note(path[i]).pitch.midi) # convert pitch name to MIDI pitch number
+                if i == 0: # initial note
+                    new_path_inversion.append(new_path[i]) # keep the same pitch
+                else: # all other notes
+                    new_path_inversion.append(new_path_inversion[i-1]-(new_path[i]-new_path[i-1])) # inverse transposition
+                path[i] = note.Note(new_path_inversion[i]).nameWithOctave # convert MIDI pitch number to pitch name
+            self.state['path']['pattern'] = path
+        else: # not applicable to other categories
+            pass # do nothing
+
+    def retrograde_inverse(self, category):
+        if category == 'path':
+            self.inverse(category) # inverse before retrograde
+            self.state['path']['pattern'].reverse() # retrograde after inverse
+        else: # not applicable to other categories
+            pass # do nothing
     
     def __rotate(self, l,n):
         return l[-n:] + l[:-n]        

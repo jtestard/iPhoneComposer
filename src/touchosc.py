@@ -412,7 +412,7 @@ class TouchOSC(object):
         an instrument number between 1 and 32.
         Sends acknowledgement message to device.
         
-        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> g = Generator("../resources/presets/test.yml", {})
         >>> osc = TouchOSC(g)
         >>> osc.update_instrument(0,2,1)
         >>> osc.generator.state['instrument']
@@ -429,7 +429,7 @@ class TouchOSC(object):
         Updates bpm.
         Sends acknowledgement message to device.
         
-        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> g = Generator("../resources/presets/test.yml", {})
         >>> osc = TouchOSC(g)
         >>> osc.update_bpm(90)
         >>> osc.generator.state['bpm']
@@ -444,10 +444,10 @@ class TouchOSC(object):
         Updates preset.
         Sends acknowledgement message to device.
         
-        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> g = Generator("../resources/presets/test.yml", {})
         >>> osc = TouchOSC(g)
         >>> osc.set_preset_dir("../resources/presets")
-        >>> osc.update_preset(2,1)
+        >>> osc.update_preset(1,1,1)
         """
         if value != 0:
             preset = row * 8 + col
@@ -466,7 +466,7 @@ class TouchOSC(object):
         gen_type may be 'cyclic' or 'random'.
         Only updates if value different from 0.
         
-        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> g = Generator("../resources/presets/test.yml", {})
         >>> osc = TouchOSC(g)
         >>> osc.update_generator('path','random',1)
         >>> osc.update_generator('rhythm','cyclic',1)
@@ -490,13 +490,13 @@ class TouchOSC(object):
         of the specified category, then sends a response to the device to update
         the display accordingly.
         
-        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> g = Generator("../resources/presets/test.yml", {})
         >>> osc = TouchOSC(g)
         >>> osc.generator.state['path']['pattern']
         ['C4', 'C3', 'C3', 'C3', 'C3', 'C3', 'C3', 'C3']
-        >>> osc.apply_algorithm('path','/2/1',1)
+        >>> osc.apply_algorithm('path','/2/6',1) ############### Test unimplemented
         Unimplemented algorithm selected...
-        >>> osc.apply_algorithm('path','/3/2',1)
+        >>> osc.apply_algorithm('path','/3/2',1) ################## Test shift right
         >>> osc.generator.state['path']['pattern']
         ['C3', 'C4', 'C3', 'C3', 'C3', 'C3', 'C3', 'C3']
         >>> osc.generator.state['pitch']['pattern']
@@ -504,12 +504,61 @@ class TouchOSC(object):
         >>> osc.apply_algorithm('pitch','/3/2',1)
         >>> osc.generator.state['pitch']['pattern']
         [[0], [3, 0, -3], [0], [0], [0], [0], [0], [0]]
+        >>> osc.apply_algorithm('pitch','/3/3',1) ################ Test shift up
+        >>> osc.generator.state['pitch']['pattern']
+        [[1], [4, 1, -2], [1], [1], [1], [1], [1], [1]]
+        >>> osc.apply_algorithm('rhythm','/3/3',1)
+        >>> osc.generator.state['rhythm']['pattern']
+        [(0, [4, 2, 2]), (0, [4, 4]), (0, [4, 4]), (0, [4, 4])]
+        >>> osc.apply_algorithm('amplitude','/3/3',1)
+        >>> osc.generator.state['amplitude']['pattern']
+        [0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6]
+        >>> osc.apply_algorithm('path','/3/3',1)
+        >>> osc.generator.state['path']['pattern']
+        ['C#3', 'C#4', 'C#3', 'C#3', 'C#3', 'C#3', 'C#3', 'C#3']
+        >>> osc.apply_algorithm('pitch','/3/4',1) ################ Test shift down
+        >>> osc.generator.state['pitch']['pattern']
+        [[0], [3, 0, -3], [0], [0], [0], [0], [0], [0]]
+        >>> osc.apply_algorithm('rhythm','/3/4',1)
+        >>> osc.generator.state['rhythm']['pattern']
+        [(0, [4, 4]), (0, [4, 2, 2]), (0, [4, 4]), (0, [4, 4])]
+        >>> osc.apply_algorithm('amplitude','/3/4',1)
+        >>> osc.generator.state['amplitude']['pattern']
+        [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+        >>> osc.apply_algorithm('path','/3/4',1)
+        >>> osc.generator.state['path']['pattern']
+        ['C3', 'C4', 'C3', 'C3', 'C3', 'C3', 'C3', 'C3']
+        >>> osc.apply_algorithm('path','/3/5', 1) ################# Test Retrograde
+        >>> osc.generator.state['path']['pattern']
+        ['C3', 'C3', 'C3', 'C3', 'C3', 'C3', 'C4', 'C3']
+        >>> osc.apply_algorithm('rhythm','/3/5',1)
+        >>> osc.generator.state['rhythm']['pattern']
+        [(3, [4, 1]), (1, [2, 4, 1]), (3, [4, 1]), (3, [4, 1])]
+        >>> osc.apply_algorithm('pitch','/3/5',1)
+        >>> osc.generator.state['pitch']['pattern']
+        [[0], [0], [0], [0], [0], [0], [3, 0, -3], [0]]
+        >>> osc.apply_algorithm('path','/2/1',1) ################# Test Inverse
+        >>> osc.generator.state['path']['pattern']
+        ['C3', 'C3', 'C3', 'C3', 'C3', 'C3', 'C2', 'C3']
+        >>> osc.apply_algorithm('path','/2/2',1) ################# Test Inverse Retrograde
+        >>> osc.generator.state['path']['pattern']
+        ['C3', 'C4', 'C3', 'C3', 'C3', 'C3', 'C3', 'C3']
         """
         if value !=0:
             if algorithm == "/3/1" :
                 algorithm = "shiftLeft"
             elif algorithm == "/3/2" :
                 algorithm = "shiftRight"
+            elif algorithm == "/3/3" :
+                algorithm = "shiftUp"
+            elif algorithm == "/3/4" :
+                algorithm = "shiftDown"
+            elif algorithm == "/3/5" :
+                algorithm = "retrograde"
+            elif algorithm == "/2/1" and category == "path" :
+                algorithm = "inverse"
+            elif algorithm == "/2/2" and category == "path" :
+                algorithm = "retrograde-inverse"
             else:
                 print "Unimplemented algorithm selected..."
                 return
@@ -527,7 +576,7 @@ class TouchOSC(object):
         Updates path corresponding to current selection if value greater than 0.
         Sends acknowledgement message to device.
         
-        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> g = Generator("../resources/presets/test.yml", {})
         >>> osc = TouchOSC(g)
         >>> osc.update_path('/4/1',1)
         >>> selected = osc.generator.state['path']['selected']
@@ -552,7 +601,7 @@ class TouchOSC(object):
         that of the selected path.
         Sends acknowledgement message to device.
         
-        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> g = Generator("../resources/presets/test.yml", {})
         >>> osc = TouchOSC(g)
         >>> osc.update_selected_path(0,1)
         >>> osc.generator.state['path']['selected']
@@ -573,7 +622,7 @@ class TouchOSC(object):
         """
         Updates path pattern one row at a time if value is greater than 0.
         
-        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> g = Generator("../resources/presets/test.yml", {})
         >>> osc = TouchOSC(g)
         >>> osc.update_rhythm(0,1,1)
         >>> external_pattern = osc.generator.deserialize_rhythm(osc.generator.state['rhythm']['pattern'])
@@ -594,7 +643,7 @@ class TouchOSC(object):
         Update rhythm dividor.
         Sends acknowledgement message to device.
         
-        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> g = Generator("../resources/presets/test.yml", {})
         >>> osc = TouchOSC(g)
         >>> osc.update_dividor(2)
         >>> osc.generator.state['rhythm']['dividor']
@@ -609,7 +658,7 @@ class TouchOSC(object):
         Updates pitch pattern one column at a time if value is greater than 0.
         Sends acknowledgement message to device.
         
-        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> g = Generator("../resources/presets/test.yml", {})
         >>> osc = TouchOSC(g)
         >>> osc.update_pitch(0,0,1)
         >>> external_pattern = osc.generator.deserialize_pitch(osc.generator.state['pitch']['pattern'])
@@ -632,7 +681,7 @@ class TouchOSC(object):
         Updates amplitude at list_idx with value amplitude.
         Sends acknowledgement message to device.
         
-        >>> g = Generator("../resources/presets/default.yml", {})
+        >>> g = Generator("../resources/presets/test.yml", {})
         >>> osc = TouchOSC(g)
         >>> osc.update_amplitude(0.7, 0)
         >>> osc.generator.state['amplitude']['pattern'][0]
