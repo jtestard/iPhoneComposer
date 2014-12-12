@@ -46,6 +46,7 @@ class TouchOSC(object):
         self.__gui = gui
         self.devicePort = config['device_port']
         self.applicationPort = config['application_port']
+	self.is_connected = False
         
         # Creates a OSC server and client
         self.update_application_server()
@@ -133,6 +134,7 @@ class TouchOSC(object):
         )
         self.send_state()
         self.__gui.addToOSC("State sent successfully to device!")
+	self.is_connected = True
     
     def send_state(self):
         """

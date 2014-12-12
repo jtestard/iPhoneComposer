@@ -70,10 +70,11 @@ class MidiOut(object):
                         # We received a list of notes
                         # Must change to note-off followed by note-on.
                         position_indicators = note.pop(0)
-                        self.__touch_osc.send_message("/path/position/1/%d" % position_indicators[0], 1)
-                        self.__touch_osc.send_message("/rhythm/position/%d/1" % position_indicators[1], 1)
-                        self.__touch_osc.send_message("/pitch/position/1/%d" % position_indicators[2], 1)
-                        self.__touch_osc.send_message("/amplitude/position/1/%d" % position_indicators[3], 1)
+			if self.__touch_osc.is_connected:
+                            self.__touch_osc.send_message("/path/position/1/%d" % position_indicators[0], 1)
+                            self.__touch_osc.send_message("/rhythm/position/%d/1" % position_indicators[1], 1)
+                            self.__touch_osc.send_message("/pitch/position/1/%d" % position_indicators[2], 1)
+                            self.__touch_osc.send_message("/amplitude/position/1/%d" % position_indicators[3], 1)
                         for element in note:
                             note_on = [0x90,element.pitch,element.velocity]
                             self.currently_playing.append([0x80,element.pitch,0])
