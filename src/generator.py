@@ -294,12 +294,17 @@ class Generator(object):
             path = self.state['path']['pattern']
             length = len(path)
             for i in range(length):
-                new_path = note.Note(path[i]).pitch.midi + 1 # convert pitch name to MIDI pitch number and transpose pitch upward by semitone
-                if new_path > 127:
-					new_path = 127 # maximal MIDI pitch number
+                new_path = note.Note(path[i]).pitch.midi # convert pitch name to MIDI number
+                if new_path == 127: # maximal MIDI pitch number
+                    permission = False # deny permission
+                    break
                 else:
-					pass # do nothing
-                path[i] = note.Note(new_path).nameWithOctave # convert MIDI pitch number to pitch name
+                    permission = True # grant permission
+            if permission is True: # permission granted 
+                for i in range(length):
+                    path[i] = note.Note(note.Note(path[i]).pitch.midi+1).nameWithOctave # (1) convert pitch name to MIDI number (2) raise chromatically (3)convert MIDI number to pitch name
+            else: # permission denied
+                pass # do nothing
             self.state['path']['pattern'] = path
         elif category == 'rhythm': # move rhythm patten upward vertically
             rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern'])
@@ -314,14 +319,14 @@ class Generator(object):
             length = len(amplitude)
             for i in range(length):
                 if amplitude[i] == 1: # maximal amplitude
-                    permission = False # shift permission denied
+                    permission = False # deny permission
                     break
                 else:
-        			  permission = True # shift permission granted
-            if permission is True:
+        			  permission = True # grant permission
+            if permission is True: # permission granted
                 for i in range(length):
                     amplitude[i] = amplitude[i] + 0.1 # increase amplitude
-            else:
+            else: # permission denied
                 pass # do nothing
             self.state['amplitude']['pattern'] = amplitude
         else: # other categories
@@ -331,13 +336,19 @@ class Generator(object):
         if category == 'path': # transpose path downward by semitone
             path = self.state['path']['pattern']
             length = len(path)
+
             for i in range(length):
-                new_path = note.Note(path[i]).pitch.midi - 1 # convert pitch name to MIDI pitch number and transpose pitch downward by semitone
-                if new_path < 0:
-                    new_path = 0 # minimal MIDI pitch number
+                new_path = note.Note(path[i]).pitch.midi # convert pitch name to MIDI number
+                if new_path == 0: # minimal MIDI pitch number
+                    permission = False # deny permission
+                    break
                 else:
-                    pass # do nothing
-                path[i] = note.Note(new_path).nameWithOctave # convert MIDI pitch number to pitch name
+                    permission = True # grant permission
+            if permission is True: # permission granted 
+                for i in range(length):
+                    path[i] = note.Note(note.Note(path[i]).pitch.midi-1).nameWithOctave # (1) convert pitch name to MIDI number (2) lower chromatically (3)convert MIDI number to pitch name
+            else: # permission denied
+                pass # do nothing
             self.state['path']['pattern'] = path
         elif category == 'rhythm': # move rhythm patten downward vertically
             rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern'])
@@ -352,14 +363,14 @@ class Generator(object):
             length = len(amplitude)
             for i in range(length):
                 if amplitude[i] == 0: # minimal amplitude
-                    permission = False # shift permission denied
+                    permission = False # deny permission
                     break
                 else:
-        			  permission = True # shift permission granted
-            if permission is True:
+        			  permission = True # grant permission
+            if permission is True: # permission granted
                 for i in range(length):
                     amplitude[i] = amplitude[i] - 0.1 # decrease amplitude
-            else:
+            else: # permission denied
                 pass # do nothing
             self.state['amplitude']['pattern'] = amplitude
         else: # other categories
