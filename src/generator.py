@@ -295,9 +295,9 @@ class Generator(object):
             length = len(path)
             for i in range(length):
                 new_path = note.Note(path[i]).pitch.midi + 1 # convert pitch name to MIDI pitch number and transpose pitch upward by semitone
-				if new_path > 127:
+                if new_path > 127:
 					new_path = 127 # maximal MIDI pitch number
-				else
+                else:
 					pass # do nothing
                 path[i] = note.Note(new_path).nameWithOctave # convert MIDI pitch number to pitch name
             self.state['path']['pattern'] = path
@@ -313,11 +313,16 @@ class Generator(object):
             amplitude = self.state['amplitude']['pattern']
             length = len(amplitude)
             for i in range(length):
-				amplitude[i] = amplitude[i] + 0.1 # increase amplitude
-				if amplitude[i] > 1
-	                amplitude[i] = 1 # maximal amplitude
-				else
-					pass # do nothing
+                if amplitude[i] == 1: # maximal amplitude
+                    permission = False # shift permission denied
+                    break
+                else:
+        			  permission = True # shift permission granted
+            if permission is True:
+                for i in range(length):
+                    amplitude[i] = amplitude[i] + 0.1 # increase amplitude
+            else:
+                pass # do nothing
             self.state['amplitude']['pattern'] = amplitude
         else: # other categories
             pass # do nothing
@@ -328,10 +333,10 @@ class Generator(object):
             length = len(path)
             for i in range(length):
                 new_path = note.Note(path[i]).pitch.midi - 1 # convert pitch name to MIDI pitch number and transpose pitch downward by semitone
-				if new_path < 0:
-					new_path = 0 # minimal MIDI pitch number
-				else
-					pass # do nothing
+                if new_path < 0:
+                    new_path = 0 # minimal MIDI pitch number
+                else:
+                    pass # do nothing
                 path[i] = note.Note(new_path).nameWithOctave # convert MIDI pitch number to pitch name
             self.state['path']['pattern'] = path
         elif category == 'rhythm': # move rhythm patten downward vertically
@@ -346,11 +351,16 @@ class Generator(object):
             amplitude = self.state['amplitude']['pattern']
             length = len(amplitude)
             for i in range(length):
-				amplitude[i] = amplitude[i] - 0.1 # decrease amplitude
-				if amplitude[i] < 0
-	                amplitude[i] = 0 # minimal amplitude
-				else 
-					pass # do nothing
+                if amplitude[i] == 0: # minimal amplitude
+                    permission = False # shift permission denied
+                    break
+                else:
+        			  permission = True # shift permission granted
+            if permission is True:
+                for i in range(length):
+                    amplitude[i] = amplitude[i] - 0.1 # decrease amplitude
+            else:
+                pass # do nothing
             self.state['amplitude']['pattern'] = amplitude
         else: # other categories
             pass # do nothing
@@ -358,15 +368,11 @@ class Generator(object):
     def retrograde(self, category):
         if category == 'rhythm':
             rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern']) # deserialize
-            sublist = 0 # counter
             [sublist.reverse() for sublist in rhythm] # reverse the sublists
             self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm) # serialize
         elif category == 'pitch':
             pitch = self.deserialize_pitch(self.state['pitch']['pattern']) # deserialize
-            sublist = 0 # counter
-            for i in pitch:
-                pitch[sublist].reverse() # reverse the sublist
-                sublist += 1 # go to next sublist
+            [sublist.reverse() for sublist in pitch] # reverse the sublist
             self.state['pitch']['pattern'] = self.serialize_pitch(pitch) # serialize
         else:
             # import pdb; pdb.set_trace()
