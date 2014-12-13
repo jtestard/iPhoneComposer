@@ -293,18 +293,13 @@ class Generator(object):
         if category == 'path': # transpose path upward by semitone
             path = self.state['path']['pattern']
             length = len(path)
+            new_path = []            
             for i in range(length):
-                new_path = note.Note(path[i]).pitch.midi # convert pitch name to MIDI number
-                if new_path == 127: # maximal MIDI pitch number
-                    permission = False # deny permission
-                    break
-                else:
-                    permission = True # grant permission
-            if permission is True: # permission granted 
+                new_path[i] = note.Note(path[i]).pitch.midi # convert pitch names to MIDI pitch numbers
+            permission = self.checkSpace(new_path, 127) # maximal MIDI pitch number == 127
+            if permission is True:
                 for i in range(length):
-                    path[i] = note.Note(note.Note(path[i]).pitch.midi+1).nameWithOctave # (1) convert pitch name to MIDI number (2) raise chromatically (3)convert MIDI number to pitch name
-            else: # permission denied
-                pass # do nothing
+                    path[i] = note.Note(new_path[i]+1).nameWithOctave # chromatically raise pitches and convert MIDI pitch numbers to pitch names
             self.state['path']['pattern'] = path
         elif category == 'rhythm': # move rhythm patten upward vertically
             rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern'])
@@ -317,38 +312,23 @@ class Generator(object):
         elif category == 'amplitude': # increase all amplitudes
             amplitude = self.state['amplitude']['pattern']
             length = len(amplitude)
-            for i in range(length):
-                if amplitude[i] == 1: # maximal amplitude
-                    permission = False # deny permission
-                    break
-                else:
-        			  permission = True # grant permission
-            if permission is True: # permission granted
+            permission = self.checkSpace(amplitude, 1) # maximal amplitude = 1
+            if permission is True:
                 for i in range(length):
                     amplitude[i] = amplitude[i] + 0.1 # increase amplitude
-            else: # permission denied
-                pass # do nothing
             self.state['amplitude']['pattern'] = amplitude
-        else: # other categories
-            pass # do nothing
 
     def shift_down(self, category):
         if category == 'path': # transpose path downward by semitone
             path = self.state['path']['pattern']
             length = len(path)
-
+            new_path = []
             for i in range(length):
-                new_path = note.Note(path[i]).pitch.midi # convert pitch name to MIDI number
-                if new_path == 0: # minimal MIDI pitch number
-                    permission = False # deny permission
-                    break
-                else:
-                    permission = True # grant permission
-            if permission is True: # permission granted 
+                new_path[i] = note.Note(path[i]).pitch.midi # convert pitch names to MIDI pitch numbers
+            permission = self.checkSpace(new_path, 0) # minimal MIDI pitch number == 0
+            if permission is True:
                 for i in range(length):
-                    path[i] = note.Note(note.Note(path[i]).pitch.midi-1).nameWithOctave # (1) convert pitch name to MIDI number (2) lower chromatically (3)convert MIDI number to pitch name
-            else: # permission denied
-                pass # do nothing
+                    path[i] = note.Note(new_path[i]-1).nameWithOctave # chromatically lower pitches and convert MIDI pitch numbers to pitch names
             self.state['path']['pattern'] = path
         elif category == 'rhythm': # move rhythm patten downward vertically
             rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern'])
@@ -361,35 +341,26 @@ class Generator(object):
         elif category == 'amplitude': # decrease all amplitudes
             amplitude = self.state['amplitude']['pattern']
             length = len(amplitude)
-            for i in range(length):
-                if amplitude[i] == 0: # minimal amplitude
-                    permission = False # deny permission
-                    break
-                else:
-        			  permission = True # grant permission
-            if permission is True: # permission granted
+            permission = self.checkSpace(amplitude, 0) # minimal amplitude = 0
+            if permission is True:
                 for i in range(length):
                     amplitude[i] = amplitude[i] - 0.1 # decrease amplitude
-            else: # permission denied
-                pass # do nothing
             self.state['amplitude']['pattern'] = amplitude
-        else: # other categories
-            pass # do nothing
 
     def retrograde(self, category):
         if category == 'rhythm':
             rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern']) # deserialize
-            [sublist.reverse() for sublist in rhythm] # reverse the sublists
+            [subList.reverse() for subList in rhythm] # reverse the mother list
             self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm) # serialize
         elif category == 'pitch':
             pitch = self.deserialize_pitch(self.state['pitch']['pattern']) # deserialize
-            [sublist.reverse() for sublist in pitch] # reverse the sublist
+            [subList.reverse() for subList in pitch] # reverse the mother list
             self.state['pitch']['pattern'] = self.serialize_pitch(pitch) # serialize
         else:
             # import pdb; pdb.set_trace()
             self.state[category]['pattern'].reverse()
 
-    def inverse(self, category):
+    def inverse(self, category): #TODO: How to (1) deal with any silent pitch (2) check space?
         if category == 'path':
             path = self.state['path']['pattern']
             length = len(path)
@@ -403,19 +374,25 @@ class Generator(object):
                     new_path_inversion.append(new_path_inversion[i-1]-(new_path[i]-new_path[i-1])) # inverse transposition
                 path[i] = note.Note(new_path_inversion[i]).nameWithOctave # convert MIDI pitch number to pitch name
             self.state['path']['pattern'] = path
-        else: # other categories
-            pass # do nothing
 
     def retrograde_inverse(self, category):
         if category == 'path':
             self.inverse(category) # inverse before retrograde
             self.state['path']['pattern'].reverse() # retrograde after inverse
-        else: # other categories
-            pass # do nothing
     
+    def checkSpace(self, dataList, limit):
+        length = len(dataList)
+        for i in range(length):
+            if dataList[i] == limit: # deny permission if any elemnt of the list equals the limit
+                permission = False
+                break
+            else: # grant permission
+                permission = True
+        return permission
+
     def __rotate(self, l,n):
         return l[-n:] + l[:-n]        
-    
+   
     def __updateOrder(self, attribute, value):
         self.state[attribute]['order'] = value
         size = self.feature_sizes[attribute]
