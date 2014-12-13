@@ -244,10 +244,11 @@ class Generator(object):
         elif algorithm == 'inverse':
             self.inverse(category)
         elif algorithm == 'retrograde-inverse':
-            self.retrograde_inverse(category)
-        else:
-            # Nothing else for the moment.
-            pass
+            self.retrogradeInverse(category)
+        elif algorithm == 'raiseOctave':
+            self.raiseOctave(category)
+        elif algorithm == 'lowerOctave':
+            self.lowerOctave(category)
     
     def shift_left(self, category):
         if category == 'rhythm':
@@ -290,16 +291,8 @@ class Generator(object):
             self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], 1)
 
     def shift_up(self, category):
-        if category == 'path': # raise path chromatically
-            path = self.state['path']['pattern'] # read path
-            length = len(path)
-            new_path = []            
-            for i in range(length):
-                new_path[i] = note.Note(path[i]).pitch.midi+1 # convert pitch names to MIDI pitch numbers and raise chromatically
-            if self.examineOverflow(new_path, length, 0, 127) is True: # all MIDI pitch numbers are within 0~127
-                for i in range(length):
-                    path[i] = note.Note(new_path[i]).nameWithOctave # convert MIDI pitch numbers to pitch names
-                self.state['path']['pattern'] = path # write path
+        if category == 'path': # raise path chromatically (interval = 1)
+            self.transposePath(1)
         elif category == 'rhythm': # shift rhythm patten upward vertically
             rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern']) # read rhythm
             rhythm = self.__rotate(rhythm, -1)
@@ -309,24 +302,11 @@ class Generator(object):
             pitch = self.__rotate(pitch, -1)
             self.state['pitch']['pattern'] = self.serialize_pitch(pitch) # write pitch
         elif category == 'amplitude': # increase all amplitudes
-            amplitude = self.state['amplitude']['pattern'] # read amplitude
-            length = len(amplitude)
-            for i in range(length):
-                amplitude[i] = amplitude[i] + 0.1 # increase amplitude
-            if self.examineOverflow(amplitude, length, 0, 1) is True: # all amplitudes are within 0~1
-                self.state['amplitude']['pattern'] = amplitude # write amplitude
+            self.adjustAmplitude(0.1)
 
     def shift_down(self, category):
-        if category == 'path': # lower path chromatically
-            path = self.state['path']['pattern'] # read path
-            length = len(path)
-            new_path = []            
-            for i in range(length):
-                new_path[i] = note.Note(path[i]).pitch.midi-1 # convert pitch names to MIDI pitch numbers and lower chromatically
-            if self.examineOverflow(new_path, length, 0, 127) is True: # all MIDI pitch numbers are within 0~127
-                for i in range(length):
-                    path[i] = note.Note(new_path[i]).nameWithOctave # convert MIDI pitch numbers to pitch names
-                self.state['path']['pattern'] = path # wirte path
+        if category == 'path': # lower path chromatically (interval = -1)
+            self.transposePath(-1)
         elif category == 'rhythm': # shift rhythm patten downward vertically
             rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern']) # read rhythm
             rhythm = self.__rotate(rhythm, 1)
@@ -336,12 +316,7 @@ class Generator(object):
             pitch = self.__rotate(pitch, 1)
             self.state['pitch']['pattern'] = self.serialize_pitch(pitch) # write pitch
         elif category == 'amplitude': # decrease all amplitudes
-            amplitude = self.state['amplitude']['pattern'] # read amplitude
-            length = len(amplitude)
-            for i in range(length):
-                amplitude[i] = amplitude[i] - 0.1 # decrease amplitude
-            if self.examineOverflow(amplitude, length, 0, 1) is True: # all amplitudes are within 0~1
-                self.state['amplitude']['pattern'] = amplitude # write amplitude
+            self.adjustAmplitude(-0.1)
 
     def retrograde(self, category):
         if category == 'rhythm':
@@ -356,25 +331,54 @@ class Generator(object):
             # import pdb; pdb.set_trace()
             self.state[category]['pattern'].reverse()
 
-    def inverse(self, category): #TODO: How to (1) deal with any silent pitch (2) check space?
+    def inverse(self, category): #TODO: How to deal with any silent pitch?
         if category == 'path':
-            path = self.state['path']['pattern']
+            path = self.state['path']['pattern'] # read path
             length = len(path)
             new_path = []
             new_path_inversion = []
-            for i in xrange(length):
-                new_path.append(note.Note(path[i]).pitch.midi) # convert pitch name to MIDI pitch number
+            for i in range(length):
+                new_path.append(note.Note(path[i]).pitch.midi) # convert pitch names to MIDI pitch numbers
                 if i == 0: # initial note
                     new_path_inversion.append(new_path[i]) # keep the same pitch
                 else: # all other notes
                     new_path_inversion.append(new_path_inversion[i-1]-(new_path[i]-new_path[i-1])) # inverse transposition
-                path[i] = note.Note(new_path_inversion[i]).nameWithOctave # convert MIDI pitch number to pitch name
-            self.state['path']['pattern'] = path
+            if self.examineOverflow(new_path_inversion, length, 0, 127) is True: # all MIDI pitch numbers are within 0~127
+                for i in range(length):                
+                    path[i] = note.Note(new_path_inversion[i]).nameWithOctave # convert MIDI pitch numbers to pitch names
+                self.state['path']['pattern'] = path # write path
 
-    def retrograde_inverse(self, category):
+    def retrogradeInverse(self, category):
         if category == 'path':
             self.inverse(category) # inverse before retrograde
             self.state['path']['pattern'].reverse() # retrograde after inverse
+
+    def raiseOctave(self, category):
+        if category == 'path':
+            self.transposePath(12) # raise path by octave (interval = 12)
+    
+    def lowerOctave(self, category):
+        if category == 'path':
+            self.transposePath(-12) # lower path by octave (interval = -12)
+
+    def transposePath(self, interval):
+        path = self.state['path']['pattern'] # read path
+        length = len(path)
+        new_path = []            
+        for i in range(length):
+            new_path[i] = note.Note(path[i]).pitch.midi + interval # convert pitch names to MIDI pitch numbers and transpose
+        if self.examineOverflow(new_path, length, 0, 127) is True: # all MIDI pitch numbers are within 0~127
+            for i in range(length):
+                path[i] = note.Note(new_path[i]).nameWithOctave # convert MIDI pitch numbers to pitch names
+            self.state['path']['pattern'] = path # wirte path
+
+    def adjustAmplitude(self, volume):
+        amplitude = self.state['amplitude']['pattern'] # read amplitude
+        length = len(amplitude)
+        for i in range(length):
+            amplitude[i] = amplitude[i] + volume # adjust amplitude
+        if self.examineOverflow(amplitude, length, 0, 1) is True: # all amplitudes are within 0~1
+            self.state['amplitude']['pattern'] = amplitude # write amplitude
     
     def examineOverflow(self, dataList, length, minimum, maximum):
         for i in range(length):

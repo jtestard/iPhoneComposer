@@ -561,6 +561,10 @@ class TouchOSC(object):
                 algorithm = "inverse"
             elif algorithm == "/2/2" and category == "path" :
                 algorithm = "retrograde-inverse"
+            elif algorithm == "/2/3" and category == "path" :
+                algorithm = "raiseOctave"
+            elif algorithm == "/2/4" and category == "path" :
+                algorithm = "lowerOctave"
             else:
                 print "Unimplemented algorithm selected..."
                 return
