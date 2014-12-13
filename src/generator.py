@@ -252,71 +252,39 @@ class Generator(object):
     
     def shift_left(self, category):
         if category == 'rhythm':
-            rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern'])
-            rhythm = rot90(rhythm, 3) # Rotate because pitches are column based.
-            rhythm = rhythm.tolist()
-            rhythm = self.__rotate(rhythm, -1)
-            rhythm = rot90(rhythm) # Rotate back.
-            rhythm = rhythm.tolist()
-            self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm)
+            self.shiftRhythmHorizontally(self, 1) # shift rhythm patten left-hand horzontally
         elif category == 'pitch':
-            pitch = self.deserialize_pitch(self.state['pitch']['pattern'])
-            pitch = rot90(pitch, 3) # Rotate because pitches are column based.
-            pitch = pitch.tolist()
-            pitch = self.__rotate(pitch, -1)
-            pitch = rot90(pitch) # Rotate back.
-            pitch = pitch.tolist()
-            self.state['pitch']['pattern'] = self.serialize_pitch(pitch)
+            self.shiftPitchHorizontally(self, 1) # shift pitch patten left-hand horzontally
         else:
             self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], -1)
     
     def shift_right(self, category):
         if category == 'rhythm':
-            rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern'])
-            rhythm = rot90(rhythm, 3) # Rotate because pitches are column based.
-            rhythm = rhythm.tolist()
-            rhythm = self.__rotate(rhythm, 1)
-            rhythm = rot90(rhythm) # Rotate back.
-            rhythm = rhythm.tolist()
-            self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm)
+            self.shiftRhythmHorizontally(self, -1) # shift rhythm patten right-hand horzontally
         elif category == 'pitch':
-            pitch = self.deserialize_pitch(self.state['pitch']['pattern']) # Deserialize
-            pitch = rot90(pitch, 3) # Rotate because pitches are column based.
-            pitch = pitch.tolist()
-            pitch = self.__rotate(pitch, 1)
-            pitch = rot90(pitch) # Rotate back.
-            pitch = pitch.tolist()
-            self.state['pitch']['pattern'] = self.serialize_pitch(pitch)
+            self.shiftPitchHorizontally(self, -1) # shift pitch patten right-hand horzontally
         else:
             self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], 1)
 
     def shift_up(self, category):
-        if category == 'path': # raise path chromatically (interval = 1)
-            self.transposePath(1)
-        elif category == 'rhythm': # shift rhythm patten upward vertically
-            rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern']) # read rhythm
-            rhythm = self.__rotate(rhythm, -1)
-            self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm) # write rhythm
-        elif category == 'pitch': # shift pitch patten upward vertically
-            pitch = self.deserialize_pitch(self.state['pitch']['pattern']) # read pitch
-            pitch = self.__rotate(pitch, -1)
-            self.state['pitch']['pattern'] = self.serialize_pitch(pitch) # write pitch
-        elif category == 'amplitude': # increase all amplitudes
-            self.adjustAmplitude(0.1)
+        if category == 'path':
+            self.transposePath(1) # raise path chromatically (interval = 1)
+        elif category == 'rhythm':
+            self.shiftRhythmVertically(self, 1) # shift rhythm patten upward vertically
+        elif category == 'pitch':
+            self.shiftPitchVertically(self, 1) # shift pitch patten upward vertically
+        elif category == 'amplitude':
+            self.adjustAmplitude(0.1) # increase all amplitudes
 
     def shift_down(self, category):
-        if category == 'path': # lower path chromatically (interval = -1)
-            self.transposePath(-1)
-        elif category == 'rhythm': # shift rhythm patten downward vertically
-            rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern']) # read rhythm
-            rhythm = self.__rotate(rhythm, 1)
-            self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm) # write rhythm
-        elif category == 'pitch': # shift pitch patten downward vertically
-            pitch = self.deserialize_pitch(self.state['pitch']['pattern']) # read pitch
-            pitch = self.__rotate(pitch, 1)
-            self.state['pitch']['pattern'] = self.serialize_pitch(pitch) # write pitch
-        elif category == 'amplitude': # decrease all amplitudes
-            self.adjustAmplitude(-0.1)
+        if category == 'path':
+            self.transposePath(-1) # lower path chromatically (interval = -1)
+        elif category == 'rhythm':
+            self.shiftRhythmVertically(self, -1) # shift rhythm patten downward vertically
+        elif category == 'pitch':
+            self.shiftPitchVertically(self, -1) # shift pitch patten downward vertically
+        elif category == 'amplitude':
+            self.adjustAmplitude(-0.1) # decrease all amplitudes
 
     def retrograde(self, category):
         if category == 'rhythm':
@@ -361,6 +329,34 @@ class Generator(object):
         if category == 'path':
             self.transposePath(-12) # lower path by octave (interval = -12)
 
+    def shiftRhythmHorizontally(self, direction):
+        rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern']) # read rhythm and deserialize
+        rhythm = rot90(rhythm, 3) # Rotate because pitches are column based.
+        rhythm = rhythm.tolist()
+        rhythm = self.__rotate(rhythm, direction) # directions: left = 1; right = -1
+        rhythm = rot90(rhythm) # Rotate back.
+        rhythm = rhythm.tolist()
+        self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm) # serialize and write rhythm
+
+    def shiftPitchHorizontally(self, direction):
+        pitch = self.deserialize_pitch(self.state['pitch']['pattern']) # read pitch and deserialize
+        pitch = rot90(pitch, 3) # Rotate because pitches are column based.
+        pitch = pitch.tolist()
+        pitch = self.__rotate(pitch, direction) # directions: left = 1; right = -1
+        pitch = rot90(pitch) # Rotate back.
+        pitch = pitch.tolist()
+        self.state['pitch']['pattern'] = self.serialize_pitch(pitch) # serialize and write pitch
+
+    def shiftRhythmVertically(self, direction):
+        rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern']) # read rhythm
+        rhythm = self.__rotate(rhythm, direction) # directions: up = 1; down = -1
+        self.state['rhythm']['pattern'] = self.serialize_rhythm(rhythm) # write rhythm
+
+    def shiftPitchVertically(self, direction):
+        pitch = self.deserialize_pitch(self.state['pitch']['pattern']) # read pitch
+        pitch = self.__rotate(pitch, direction) # directions: up = 1; down = -1
+        self.state['pitch']['pattern'] = self.serialize_pitch(pitch) # write pitch
+
     def transposePath(self, interval):
         path = self.state['path']['pattern'] # read path
         length = len(path)
@@ -389,8 +385,8 @@ class Generator(object):
                 break
         return permission
 
-    def __rotate(self, l,n):
-        return l[-n:] + l[:-n]        
+    def __rotate(self, l, n):
+        return l[n:] + l[:n]        
    
     def __updateOrder(self, attribute, value):
         self.state[attribute]['order'] = value
