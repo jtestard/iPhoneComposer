@@ -318,7 +318,7 @@ class Generator(object):
                     afterInversion.append(beforeInversion[i]) # keep the same pitch
                 else: # all other notes
                     afterInversion.append(afterInversion[i-1]-(beforeInversion[i]-beforeInversion[i-1])) # inverse transposition                
-            if self.examineOverflow(afterInversion, len(afterInversion), 0, 127) is True: # all MIDI pitch numbers are within 0~127
+            if self.examineOverflow(afterInversion, 0, 127) is True: # all MIDI pitch numbers are within 0~127
                 for i in range(len(restIndex)):
                     new_path[restIndex[i]] = 'S' # write all rests ('S')
                 for i in range(len(noteIndex)):
@@ -379,7 +379,7 @@ class Generator(object):
                 noteIndex.append(i) # index all notes
         for i in range(len(noteIndex)):
             temp_path.append(note.Note(path[noteIndex[i]]).pitch.midi + interval) # (1) read all notes (2) convert pitch names to MIDI pitch numbers (3) transpose
-        if self.examineOverflow(temp_path, len(temp_path), 0, 127) is True: # all MIDI pitch numbers are within 0~127
+        if self.examineOverflow(temp_path, 0, 127) is True: # all MIDI pitch numbers are within 0~127
             for i in range(len(restIndex)):
                 new_path[restIndex[i]] = 'S' # write all rests ('S')
             for i in range(len(noteIndex)):
@@ -390,14 +390,14 @@ class Generator(object):
         amplitude = self.state['amplitude']['pattern'] # read amplitude
         for i in range(len(amplitude)):
             amplitude[i] = amplitude[i] + volume # adjust amplitude
-        if self.examineOverflow(amplitude, len(amplitude), 0, 1) is True: # all amplitudes are within 0~1
+        if self.examineOverflow(amplitude, 0, 1) is True: # all amplitudes are within 0~1
             self.state['amplitude']['pattern'] = amplitude # write amplitude
     
-    def examineOverflow(self, dataList, length, minimum, maximum):
-        for i in range(length):
+    def examineOverflow(self, dataList, minimum, maximum):
+        for i in range(len(dataList)):
             if dataList[i] >= minimum and dataList[i] <= maximum: # grant permission
                 permission = True
-            else: # deny permission if any elemnt beyond limits
+            else: # deny permission if any elemnt goes beyond limits
                 permission = False
                 break
         return permission
