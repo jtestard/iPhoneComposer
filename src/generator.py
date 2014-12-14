@@ -313,12 +313,12 @@ class Generator(object):
                 else:
                     noteIndex.append(i) # index all notes
             for i in range(len(noteIndex)):
-                beforeInversion.append(note.Note(path[noteIndex[i]]).pitch.midi) # convert pitch names to MIDI pitch numbers
+                beforeInversion.append(note.Note(path[noteIndex[i]]).pitch.midi) # read all notes and convert pitch names to MIDI pitch numbers
                 if i == 0: # initial note
                     afterInversion.append(beforeInversion[i]) # keep the same pitch
                 else: # all other notes
                     afterInversion.append(afterInversion[i-1]-(beforeInversion[i]-beforeInversion[i-1])) # inverse transposition                
-            if self.examineOverflow(afterInversion, len(path), 0, 127) is True: # all MIDI pitch numbers are within 0~127
+            if self.examineOverflow(afterInversion, len(afterInversion), 0, 127) is True: # all MIDI pitch numbers are within 0~127
                 for i in range(len(restIndex)):
                     new_path[restIndex[i]] = 'S' # write all rests ('S')
                 for i in range(len(noteIndex)):
@@ -366,15 +366,25 @@ class Generator(object):
         pitch = self.__rotate(pitch, direction) # directions: up = 1; down = -1
         self.state['pitch']['pattern'] = self.serialize_pitch(pitch) # write pitch
 
-    def transposePath(self, interval): #TODO: deal with 'S'
+    def transposePath(self, interval):
         path = self.state['path']['pattern'] # read path
-        new_path = []            
+        restIndex = []
+        noteIndex = []
+        temp_path = []
+        new_path = []
         for i in range(len(path)):
-            new_path[i] = note.Note(path[i]).pitch.midi + interval # convert pitch names to MIDI pitch numbers and transpose
-        if self.examineOverflow(new_path, len(path), 0, 127) is True: # all MIDI pitch numbers are within 0~127
-            for i in range(len(path)):
-                path[i] = note.Note(new_path[i]).nameWithOctave # convert MIDI pitch numbers to pitch names
-            self.state['path']['pattern'] = path # wirte path
+            if path[i] == 'S':
+                restIndex.append(i) # index all rests ('S')
+            else:
+                noteIndex.append(i) # index all notes
+        for i in range(len(noteIndex)):
+            temp_path.append(note.Note(path[noteIndex[i]]).pitch.midi + interval) # (1) read all notes (2) convert pitch names to MIDI pitch numbers (3) transpose
+        if self.examineOverflow(temp_path, len(temp_path), 0, 127) is True: # all MIDI pitch numbers are within 0~127
+            for i in range(len(restIndex)):
+                new_path[restIndex[i]] = 'S' # write all rests ('S')
+            for i in range(len(noteIndex)):
+                new_path[noteIndex[i]] = note.Note(temp_path[i]).nameWithOctave # convert MIDI pitch numbers to pitch names and write all notes
+            self.state['path']['pattern'] = path # write path
 
     def adjustAmplitude(self, volume):
         amplitude = self.state['amplitude']['pattern'] # read amplitude
