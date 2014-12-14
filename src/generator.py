@@ -395,9 +395,9 @@ class Generator(object):
     
     def examineOverflow(self, dataList, minimum, maximum):
         for i in range(len(dataList)):
-            if dataList[i] >= minimum and dataList[i] <= maximum: # grant permission
+            if dataList[i] >= minimum and dataList[i] <= maximum: # grant permission and test next element until complete
                 permission = True
-            else: # deny permission if any elemnt goes beyond limits
+            else: # deny permission if any element goes beyond limits
                 permission = False
                 break
         return permission
