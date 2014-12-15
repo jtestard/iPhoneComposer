@@ -249,6 +249,8 @@ class Generator(object):
             self.raiseOctave(category)
         elif algorithm == 'lowerOctave':
             self.lowerOctave(category)
+        elif algorithm == 'repeat':
+            self.repeat(category)
     
     def shift_left(self, category):
         if category == 'rhythm':
@@ -331,6 +333,13 @@ class Generator(object):
     def lowerOctave(self, category):
         if category == 'path':
             self.transposePath(-12) # lower path by octave (interval = -12)
+
+    def repeat(self, category):
+        if category == 'path':
+            path = self.state['path']['pattern'][:] # read path
+            for i in range(len(path)):
+                path[i] = path[0] # copy the initial note to all
+            self.state['path']['pattern'] = path[:] # write path
 
     def shiftRhythmHorizontally(self, direction):
         rhythm = self.deserialize_rhythm(self.state['rhythm']['pattern']) # read rhythm and deserialize

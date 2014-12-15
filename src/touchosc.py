@@ -565,6 +565,8 @@ class TouchOSC(object):
                 algorithm = "raiseOctave"
             elif algorithm == "/2/4" and category == "path" :
                 algorithm = "lowerOctave"
+            elif algorithm == "/2/5" and category == "path" :
+                algorithm = "repeat"
             else:
                 print "Unimplemented algorithm selected..."
                 return
