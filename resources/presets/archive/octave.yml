@@ -1,16 +1,16 @@
 instrument: 23
-bpm : 120
+bpm : 100
 rhythm :
   dividor : 4
   pattern : [
-    [1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,1,1,1]
+    [1,0,1,0,1,0,1,0],
+    [1,0,1,0,1,0,1,0],
+    [1,0,1,0,1,0,1,0],
+    [1,0,1,0,1,0,1,0]
   ]
   order : cyclic
 path: 
-  pattern: ['G4', 'G5', 'G4', 'G5', 'G4', 'G5', 'G4', 'G5']
+  pattern: ['S', 'A2', 'A2', 'A3', 'A3', 'A2', 'A2', 'S']
   order : cyclic
 pitch:
   pattern: [
@@ -28,5 +28,5 @@ pitch:
   ] 
   order: cyclic
 amplitude:
-  pattern : [0.6,0.5,0.6,0.5,0.6,0.5,0.6,0.5]
+  pattern : [0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5]
   order: cyclic
