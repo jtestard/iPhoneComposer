@@ -314,7 +314,7 @@ class Generator(object):
                     afterInversion.append(beforeInversion[i]) # keep the same pitch
                 else: # all other notes
                     afterInversion.append(afterInversion[i-1]-(beforeInversion[i]-beforeInversion[i-1])) # inverse transposition                
-            if self.examineOverflow(afterInversion, 0, 127) is True: # all MIDI pitch numbers are within 0~127
+            if self.examineOverflow(afterInversion, 5, 122) is True: # all MIDI pitch numbers are within 0~127, with +-5 pitch offset = 5~122
                 for i in range(len(noteIndex)):
                     path[noteIndex[i]] = note.Note(afterInversion[i]).nameWithOctave # convert MIDI pitch numbers to pitch names and write all notes
                 self.state['path']['pattern'] = path[:] # write path
@@ -369,7 +369,7 @@ class Generator(object):
 				noteIndex.append(i) # index all notes
         for i in range(len(noteIndex)):
             temp_path.append(note.Note(path[noteIndex[i]]).pitch.midi + interval) # (1) read all notes (2) convert pitch names to MIDI pitch numbers (3) transpose
-        if self.examineOverflow(temp_path, 0, 127) is True: # all MIDI pitch numbers are within 0~127
+        if self.examineOverflow(temp_path, 5, 122) is True: # all MIDI pitch numbers are within 0~127, with +-5 pitch offset = 5~122
             for i in range(len(noteIndex)):
                 path[noteIndex[i]] = note.Note(temp_path[i]).nameWithOctave # convert MIDI pitch numbers to pitch names and write all notes
             self.state['path']['pattern'] = path[:] # write path
