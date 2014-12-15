@@ -256,7 +256,7 @@ class Generator(object):
         elif category == 'pitch':
             self.shiftPitchHorizontally(self, 1) # shift pitch patten left-hand horzontally
         else:
-            self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], -1)
+            self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], 1)
     
     def shift_right(self, category):
         if category == 'rhythm':
@@ -264,7 +264,7 @@ class Generator(object):
         elif category == 'pitch':
             self.shiftPitchHorizontally(self, -1) # shift pitch patten right-hand horzontally
         else:
-            self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], 1)
+            self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], -1)
 
     def shift_up(self, category):
         if category == 'path':
