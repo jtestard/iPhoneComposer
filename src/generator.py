@@ -252,17 +252,17 @@ class Generator(object):
     
     def shift_left(self, category):
         if category == 'rhythm':
-            self.shiftRhythmHorizontally(self, 1) # shift rhythm patten left-hand horzontally
+			self.shiftRhythmHorizontally(1) # shift rhythm patten left-hand horzontally
         elif category == 'pitch':
-            self.shiftPitchHorizontally(self, 1) # shift pitch patten left-hand horzontally
+            self.shiftPitchHorizontally(1) # shift pitch patten left-hand horzontally
         else:
             self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], 1)
     
     def shift_right(self, category):
         if category == 'rhythm':
-            self.shiftRhythmHorizontally(self, -1) # shift rhythm patten right-hand horzontally
+            self.shiftRhythmHorizontally(-1) # shift rhythm patten right-hand horzontally
         elif category == 'pitch':
-            self.shiftPitchHorizontally(self, -1) # shift pitch patten right-hand horzontally
+            self.shiftPitchHorizontally(-1) # shift pitch patten right-hand horzontally
         else:
             self.state[category]['pattern'] = self.__rotate(self.state[category]['pattern'], -1)
 
@@ -270,9 +270,9 @@ class Generator(object):
         if category == 'path':
             self.transposePath(1) # raise path chromatically (interval = 1)
         elif category == 'rhythm':
-            self.shiftRhythmVertically(self, 1) # shift rhythm patten upward vertically
+            self.shiftRhythmVertically(1) # shift rhythm patten upward vertically
         elif category == 'pitch':
-            self.shiftPitchVertically(self, 1) # shift pitch patten upward vertically
+            self.shiftPitchVertically(1) # shift pitch patten upward vertically
         elif category == 'amplitude':
             self.adjustAmplitude(0.1) # increase all amplitudes
 
@@ -280,9 +280,9 @@ class Generator(object):
         if category == 'path':
             self.transposePath(-1) # lower path chromatically (interval = -1)
         elif category == 'rhythm':
-            self.shiftRhythmVertically(self, -1) # shift rhythm patten downward vertically
+            self.shiftRhythmVertically(-1) # shift rhythm patten downward vertically
         elif category == 'pitch':
-            self.shiftPitchVertically(self, -1) # shift pitch patten downward vertically
+            self.shiftPitchVertically(-1) # shift pitch patten downward vertically
         elif category == 'amplitude':
             self.adjustAmplitude(-0.1) # decrease all amplitudes
 
@@ -301,7 +301,7 @@ class Generator(object):
 
     def inverse(self, category):
         if category == 'path':
-            path = self.state['path']['pattern'] # read path
+            path = self.state['path']['pattern'][:] # read path
             restIndex = []
             noteIndex = []
             beforeInversion = [] # lenngth = len(noteIndex)
@@ -323,12 +323,12 @@ class Generator(object):
                     new_path[restIndex[i]] = 'S' # write all rests ('S')
                 for i in range(len(noteIndex)):
                     new_path[noteIndex[i]] = note.Note(afterInversion[i]).nameWithOctave # convert MIDI pitch numbers to pitch names and write all notes
-                self.state['path']['pattern'] = path # write path
+                self.state['path']['pattern'] = path[:] # write path
 
-    def retrogradeInverse(self, category):
-        if category == 'path':
-            self.inverse(category) # inverse before retrograde
-            self.state['path']['pattern'].reverse() # retrograde after inverse
+	def retrogradeInverse(self, category):
+		if category == 'path':
+			self.inverse(category) # inverse before retrograde
+			self.retrograde(category) # retrograde after inverse
 
     def raiseOctave(self, category):
         if category == 'path':
@@ -367,7 +367,7 @@ class Generator(object):
         self.state['pitch']['pattern'] = self.serialize_pitch(pitch) # write pitch
 
     def transposePath(self, interval):
-        path = self.state['path']['pattern'] # read path
+        path = self.state['path']['pattern'][:] # read path
         restIndex = []
         noteIndex = []
         temp_path = []
@@ -384,7 +384,7 @@ class Generator(object):
                 new_path[restIndex[i]] = 'S' # write all rests ('S')
             for i in range(len(noteIndex)):
                 new_path[noteIndex[i]] = note.Note(temp_path[i]).nameWithOctave # convert MIDI pitch numbers to pitch names and write all notes
-            self.state['path']['pattern'] = path # write path
+            self.state['path']['pattern'] = path[:] # write path
 
     def adjustAmplitude(self, volume):
         amplitude = self.state['amplitude']['pattern'][:] # read amplitude
