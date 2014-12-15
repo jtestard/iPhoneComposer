@@ -387,11 +387,11 @@ class Generator(object):
             self.state['path']['pattern'] = path # write path
 
     def adjustAmplitude(self, volume):
-        amplitude = self.state['amplitude']['pattern'] # read amplitude
+        amplitude = self.state['amplitude']['pattern'][:] # read amplitude
         for i in range(len(amplitude)):
             amplitude[i] = amplitude[i] + volume # adjust amplitude
         if self.examineOverflow(amplitude, 0, 1) is True: # all amplitudes are within 0~1
-            self.state['amplitude']['pattern'] = amplitude # write amplitude
+            self.state['amplitude']['pattern'] = amplitude[:] # write amplitude
     
     def examineOverflow(self, dataList, minimum, maximum):
         for i in range(len(dataList)):
