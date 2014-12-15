@@ -697,7 +697,7 @@ class TouchOSC(object):
         """
         self.generator.update('amplitude pattern %d' % list_idx, amplitude)
         if hasattr(self, 'client'):
-            self.send_message('/amplitude/l%d' % (list_idx + 1), int(amplitude * 127))
+            self.send_message('/amplitude/l%d' % (list_idx + 1), amplitude)
 
     def reset_handler(self,addr, tags, data, source):
         try:
