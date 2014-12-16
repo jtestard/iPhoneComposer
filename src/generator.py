@@ -319,10 +319,10 @@ class Generator(object):
                     path[noteIndex[i]] = note.Note(afterInversion[i]).nameWithOctave # convert MIDI pitch numbers to pitch names and write all notes
                 self.state['path']['pattern'] = path[:] # write path
 
-	def retrogradeInverse(self, category):
-		if category == 'path':
-			self.inverse(category) # inverse before retrograde
-			self.retrograde(category) # retrograde after inverse
+    def retrogradeInverse(self, category):
+        if category == 'path':
+            self.inverse(category) # inverse before retrograde
+            self.retrograde(category) # retrograde after inverse
 
     def raiseOctave(self, category):
         if category == 'path':
