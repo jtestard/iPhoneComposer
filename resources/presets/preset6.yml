@@ -10,7 +10,7 @@ rhythm :
   ]
   order : cyclic
 path: 
-  pattern: ['A#2', 'A2', 'A#2', 'G2', 'A2', 'F2', 'G2', 'G2']
+  pattern: ['A#3', 'A3', 'A#3', 'G3', 'A3', 'F3', 'G3', 'G3']
   order : cyclic 
 pitch:
   pattern: [
