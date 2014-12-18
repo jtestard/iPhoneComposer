@@ -1,17 +1,17 @@
-instrument: 05
+instrument: 28
 bpm : 120
 rhythm :
   dividor : 4
   pattern : [
-    [1,0,0,0,0,0,0,0],
-    [1,0,0,0,0,0,0,0],
-    [1,0,0,0,0,0,0,0],
-    [1,0,0,0,0,0,0,0]
+    [1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1]
   ]
   order : cyclic
 path: 
-  pattern: ['A#3', 'A3', 'A#3', 'G3', 'A3', 'F3', 'G3', 'G3']
-  order : cyclic 
+  pattern: ['G4', 'G5', 'G4', 'G5', 'G4', 'G5', 'G4', 'G5']
+  order : cyclic
 pitch:
   pattern: [
     [0,0,0,0,0,0,0,0],
@@ -28,5 +28,5 @@ pitch:
   ] 
   order: cyclic
 amplitude:
-  pattern : [0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5]
+  pattern : [0.6,0.5,0.6,0.5,0.6,0.5,0.6,0.5]
   order: cyclic
